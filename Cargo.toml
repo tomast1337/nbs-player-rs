@@ -5,4 +5,4 @@ edition = "2024"
 
 [dependencies]
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
-wasm-bindgen = "0.2.100"
+raylib = "5.0.2"
