@@ -1,13 +1,16 @@
 use bevy::prelude::*;
 use nbs_rs::Note;
 
-use crate::piano::{self, PianoKey};
+use crate::{
+    piano::{self, PianoKey},
+    AppState,
+};
 
 static NOTE_TEXTURE: &[u8] = include_bytes!("../assets/note_block.png");
 
 // Resource to hold the song data
 #[derive(Resource)]
-pub struct Song {
+pub struct SongData {
     pub notes: Vec<Note>,
 }
 
@@ -21,15 +24,18 @@ pub struct NoteComponent {
 // Spawn notes based on the current tick
 pub fn spawn_notes(
     mut commands: Commands,
-    song: Res<Song>,
+    song: Res<SongData>,
     time: Res<Time>,
     asset_server: Res<AssetServer>,
+    app_state: Res<AppState>,
 ) {
     let current_tick = (time.elapsed_secs() * 1000.0) as u16; // Convert time to ticks
+    let white_key_width = app_state.white_key_width;
+    let key_spacing = app_state.key_spacing;
 
     for note in &song.notes {
         if note.tick <= current_tick {
-            let _x_pos = (note.key as f32 - 60.0) * (piano::WHITE_KEY_WIDTH + piano::KEY_SPACING); // Adjust for middle C
+            let _x_pos = (note.key as f32 - 60.0) * (white_key_width + key_spacing); // Adjust for middle C
             let _y_pos = 300.0; // Start at the top of the screen
 
             // Load the note texture
@@ -46,40 +52,6 @@ pub fn spawn_notes(
                     velocity: 100.0,        // Pixels per second
                 },
             ));
-        }
-    }
-}
-
-// Move notes downward
-pub fn move_notes(mut query: Query<(&mut Transform, &NoteComponent)>, time: Res<Time>) {
-    for (mut transform, note) in &mut query {
-        transform.translation.y -= note.velocity * time.delta_secs();
-    }
-}
-
-// Play sounds when notes reach the piano roll
-pub fn play_notes(
-    mut commands: Commands,
-    query: Query<(Entity, &Transform, &NoteComponent)>,
-    mut key_query: Query<&mut PianoKey>,
-    audio: Res<Audio>,
-    sounds: Res<Assets<AudioSource>>,
-) {
-    for (entity, transform, note) in &query {
-        if transform.translation.y <= -250.0 {
-            // Play the sound
-            let sound = sounds.get(SOUNDS[note.sound as usize]).unwrap();
-            audio.play(sound.clone());
-
-            // Reset the key state after a short delay
-            for mut piano_key in &mut key_query {
-                if piano_key.key == note.key {
-                    piano_key.is_pressed = true;
-                }
-            }
-
-            // Despawn the note
-            commands.entity(entity).despawn();
         }
     }
 }
