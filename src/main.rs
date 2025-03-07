@@ -1,4 +1,4 @@
-use bevy::{prelude::*, window::WindowTheme};
+use bevy::prelude::*;
 use nbs_rs::{NbsParser, Note};
 use piano::setup_piano;
 use std::{fs, str};
@@ -8,11 +8,6 @@ mod piano;
 #[derive(Resource)]
 pub struct SoundResources {
     sound: Vec<Handle<AudioSource>>,
-}
-
-#[derive(Resource)]
-pub struct SongData {
-    sound: Vec<Note>,
 }
 
 fn setup_audio_files(asset_server: Res<AssetServer>, mut commands: Commands) {
@@ -46,20 +41,10 @@ fn setup_audio_files(asset_server: Res<AssetServer>, mut commands: Commands) {
 }
 
 fn main() {
-    // print current working directory
-    println!(
-        "Current working directory: {:?}",
-        std::env::current_dir().unwrap()
-    );
-
     let song_data = fs::read("./test-assets/nyan_cat.nbs").expect("Failed to read the .nbs file");
     let mut song_file = NbsParser::new(song_data.as_slice());
     let song = song_file.parse().unwrap();
     let notes = song.notes;
-
-    for note in notes {
-        println!("{:?}", note);
-    }
 
     let song_name = str::from_utf8(&song.header.song_name).unwrap();
     let song_author = str::from_utf8(&song.header.song_author).unwrap();
@@ -74,6 +59,7 @@ fn main() {
         }),
         ..Default::default()
     }))
+    .insert_resource(SongData { sound: notes })
     .add_systems(Startup, setup_piano)
     .add_systems(Startup, setup_audio_files);
 
