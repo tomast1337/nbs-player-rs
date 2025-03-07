@@ -21,6 +21,14 @@ static SOUNDS: &[&[u8]] = &[
     include_bytes!("../assets/pling.ogg"),          // 15 - Pling
 ];
 
+static NOTE_TEXTURE: &[u8] = include_bytes!("../assets/note_block.png");
+
+struct Note {
+    color: Color,
+    position: Vec2,
+    velocity: Vec2,
+}
+
 use bevy::sprite::{Wireframe2dConfig, Wireframe2dPlugin};
 
 fn main() {
