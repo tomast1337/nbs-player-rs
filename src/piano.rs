@@ -1,12 +1,5 @@
 use bevy::prelude::*;
 
-// Constants for the piano roll
-pub const WHITE_KEY_WIDTH: f32 = 40.0;
-pub const WHITE_KEY_HEIGHT: f32 = 160.0;
-pub const BLACK_KEY_WIDTH: f32 = 25.0;
-pub const BLACK_KEY_HEIGHT: f32 = 100.0;
-pub const KEY_SPACING: f32 = 2.0;
-
 // Component for piano keys
 #[derive(Component)]
 pub struct PianoKey {
@@ -15,7 +8,11 @@ pub struct PianoKey {
 }
 
 // Setup the piano keyboard
-pub fn setup_keyboard(mut commands: Commands) {
+pub fn setup_keyboard(mut commands: Commands, windows: Query<&mut Window>) {
+    let window = windows.single();
+    let window_width = window.width();
+    let window_height = window.height();
+
     commands.spawn(Camera2d);
 
     let white_keys = [
@@ -112,18 +109,33 @@ pub fn setup_keyboard(mut commands: Commands) {
         ("A#7", 50),
     ];
 
+    let key_size_relative_to_screen = 0.1;
+    let black_key_width_ratio = 0.6;
+    let black_key_height_ratio = 0.6;
+
+    let num_white_keys = white_keys.len() as f32;
+    let white_key_width = window_width / num_white_keys;
+    let white_key_height = window_height * key_size_relative_to_screen;
+    let black_key_width = white_key_width * black_key_width_ratio;
+    let black_key_height = white_key_height * black_key_height_ratio;
+
+    let key_spacing = 0.1; // Spacing between keys
+
     // Draw white keys
     for (i, (key, midi_note)) in white_keys.iter().enumerate() {
-        let x_pos = i as f32 * (WHITE_KEY_WIDTH + KEY_SPACING) - 450.0; // Centered on screen
+        let x_pos =
+            i as f32 * (white_key_width + key_spacing) - window_width / 2.0 + white_key_width / 2.0; // Centered on screen
+
+        let y_pos = -window_height / 2.0 + white_key_height / 2.0;
 
         commands.spawn((
             Sprite {
                 color: Color::WHITE,
-                custom_size: Some(Vec2::new(WHITE_KEY_WIDTH, WHITE_KEY_HEIGHT)),
-
+                custom_size: Some(Vec2::new(white_key_width, white_key_height)),
                 ..default()
             },
-            Transform::from_xyz(x_pos, -250.0, 0.0),
+            Transform::from_xyz(x_pos, y_pos, 0.0),
+            GlobalTransform::default(),
             Visibility::default(),
             PianoKey {
                 key: *midi_note,
@@ -140,23 +152,26 @@ pub fn setup_keyboard(mut commands: Commands) {
                 ..default()
             },
             Transform::from_xyz(x_pos, -200.0, 1.1),
-            GlobalTransform::default(),
-            Visibility::default(),
         ));
     }
 
     // Draw black keys (similar logic as above)
     for (key, midi_note) in black_keys.iter() {
-        let x_pos =
-            *midi_note as f32 * (WHITE_KEY_WIDTH + KEY_SPACING) - 450.0 - (BLACK_KEY_WIDTH / 2.0);
+        let x_pos = *midi_note as f32 * (white_key_width + key_spacing) - window_width / 2.0
+            + white_key_width / 2.0
+            - (black_key_width / 2.0);
+
+        let y_pos = -window_height / 2.0 + black_key_height / 2.0;
 
         commands.spawn((
             Sprite {
                 color: Color::BLACK,
-                custom_size: Some(Vec2::new(BLACK_KEY_WIDTH, BLACK_KEY_HEIGHT)),
+                custom_size: Some(Vec2::new(black_key_width, black_key_height)),
                 ..default()
             },
-            Transform::from_xyz(x_pos, -200.0, 1.0),
+            Transform::from_xyz(x_pos, y_pos, 1.0), // Higher z-index
+            GlobalTransform::default(),
+            Visibility::default(),
             PianoKey {
                 key: *midi_note,
                 is_pressed: false,
