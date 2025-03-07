@@ -785,7 +785,7 @@ dependencies = [
  "bevy_reflect",
  "derive_more",
  "glam",
- "itertools 0.13.0",
+ "itertools",
  "rand",
  "rand_distr",
  "serde",
@@ -1242,7 +1242,7 @@ dependencies = [
  "bitflags 2.9.0",
  "cexpr",
  "clang-sys",
- "itertools 0.12.1",
+ "itertools",
  "log",
  "prettyplease",
  "proc-macro2",
@@ -2363,15 +2363,6 @@ dependencies = [
 
 [[package]]
 name = "itertools"
-version = "0.12.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ba291022dbbd398a455acf126c1e341954079855bc60dfdda641363bd6922569"
-dependencies = [
- "either",
-]
-
-[[package]]
-name = "itertools"
 version = "0.13.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
@@ -2666,7 +2657,7 @@ dependencies = [
 [[package]]
 name = "nbs-rs"
 version = "0.1.0"
-source = "git+https://github.com/tomast1337/nbs-rs.git#58850ce1a023469bebcb60c63e12ae878ad364e7"
+source = "git+https://github.com/tomast1337/nbs-rs.git#ebc5b9d2d15cddc8cecb0b451545fdaa7548d0c6"
 
 [[package]]
 name = "ndk"
