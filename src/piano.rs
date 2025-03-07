@@ -8,7 +8,7 @@ pub struct PianoKey {
 }
 
 // Setup the piano keyboard
-pub fn setup_keyboard(mut commands: Commands, windows: Query<&mut Window>) {
+pub fn setup_piano(mut commands: Commands, windows: Query<&mut Window>) {
     let window = windows.single();
     let window_width = window.width();
     let window_height = window.height();
@@ -157,8 +157,9 @@ pub fn setup_keyboard(mut commands: Commands, windows: Query<&mut Window>) {
 
     // Draw black keys (similar logic as above)
     for (key, midi_note) in black_keys.iter() {
-        let x_pos = *midi_note as f32 * (white_key_width + key_spacing) - window_width / 2.0
-            + white_key_width / 2.0
+        let x_pos = *midi_note as f32 * (white_key_width + key_spacing)
+            - window_width / 2.0
+            - white_key_width / 2.0
             - (black_key_width / 2.0);
 
         let y_pos = -window_height / 2.0 + black_key_height / 2.0;
