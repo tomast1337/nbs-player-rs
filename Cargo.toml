@@ -4,5 +4,5 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+bevy = "0.15.3"
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
-raylib = "5.0.2"
