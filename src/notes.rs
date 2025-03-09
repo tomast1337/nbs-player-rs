@@ -1,3 +1,4 @@
+/*
 use bevy::prelude::*;
 use nbs_rs::Note;
 
@@ -55,3 +56,5 @@ pub fn spawn_notes(
         }
     }
 }
+
+*/

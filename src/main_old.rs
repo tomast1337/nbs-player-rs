@@ -1,3 +1,4 @@
+/*
 use bevy::prelude::*;
 use nbs_rs::NbsParser;
 use notes::{spawn_notes, SongData};
@@ -219,3 +220,5 @@ fn main() {
     );
     app.run();
 }
+
+*/
