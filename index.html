@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rust WASM Player</title>
+    <script type="module">
+        import init, { start } from "./pkg/nbs_player_rs.js";
+
+        async function run() {
+            await init();
+            start();
+        }
+
+        run();
+    </script>
+</head>
+
+<body>
+    <h1>Rust WASM Player</h1>
+
+
+    <canvas id="canvas" width="800" height="600"></canvas>
+</body>
+
+</html>
