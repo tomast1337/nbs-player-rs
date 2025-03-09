@@ -31,7 +31,7 @@ pub fn start(
 
     app.add_plugins((DefaultPlugins.set(WindowPlugin {
         primary_window: Some(Window {
-            resolution: (width.unwrap_or(1280.), height.unwrap_or(720.)).into(),
+            resolution: (width.unwrap_or(848.), height.unwrap_or(480.)).into(),
             canvas: Some(canvas_id.unwrap_or_else(|| "canvas".to_string())),
             ..default()
         }),
@@ -40,14 +40,12 @@ pub fn start(
         ..Default::default()
     }),))
         .insert_resource(SongData { nbs_file: song })
-        .add_systems(Startup, (setup, setup_piano, setup_song_info));
+        .add_systems(Startup, (setup, setup_piano, setup_song_info, setup_notes));
 
     app.run();
 
     Ok(())
 }
-
-const X_EXTENT: f32 = 900.;
 
 fn setup_song_info(mut commands: Commands, song: ResMut<SongData>) {
     let song = &song.nbs_file;
@@ -76,39 +74,53 @@ fn setup(
     mut materials: ResMut<Assets<ColorMaterial>>,
 ) {
     commands.spawn(Camera2d);
+}
 
-    let shapes = [
-        meshes.add(Circle::new(50.0)),
-        meshes.add(CircularSector::new(50.0, 1.0)),
-        meshes.add(CircularSegment::new(50.0, 1.25)),
-        meshes.add(Ellipse::new(25.0, 50.0)),
-        meshes.add(Annulus::new(25.0, 50.0)),
-        meshes.add(Capsule2d::new(25.0, 50.0)),
-        meshes.add(Rhombus::new(75.0, 100.0)),
-        meshes.add(Rectangle::new(50.0, 100.0)),
-        meshes.add(RegularPolygon::new(50.0, 6)),
-        meshes.add(Triangle2d::new(
-            Vec2::Y * 50.0,
-            Vec2::new(-50.0, -50.0),
-            Vec2::new(50.0, -50.0),
-        )),
-    ];
-    let num_shapes = shapes.len();
+fn setup_notes(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    song: Res<SongData>,
+    window: Query<&Window>,
+) {
+    // TODO: This part is not working correctly
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
 
-    for (i, shape) in shapes.into_iter().enumerate() {
-        // Distribute colors evenly across the rainbow.
-        let color = Color::hsl(360. * i as f32 / num_shapes as f32, 0.95, 0.7);
+    let song = &song.nbs_file;
+    let notes = &song.notes;
 
-        commands.spawn((
-            Mesh2d(shape),
-            MeshMaterial2d(materials.add(color)),
-            Transform::from_xyz(
-                // Distribute shapes from -X_EXTENT/2 to +X_EXTENT/2.
-                -X_EXTENT / 2. + i as f32 / (num_shapes - 1) as f32 * X_EXTENT,
-                0.0,
-                0.0,
-            ),
-        ));
+    let key_spacing = 1.; // Spacing between keys
+
+    let num_white_keys = 52;
+    let white_key_width = (window_width / num_white_keys as f32) - key_spacing;
+
+    let white_keys = generate_piano_keys().0;
+
+    let note_mesh = meshes.add(Rectangle::new(white_key_width, white_key_width));
+    let note_material = materials.add(Color::hsl(
+        0.0,  // Hue
+        0.95, // Saturation
+        0.7,  // Lightness
+    ));
+
+    for note in notes {
+        let key = note.key;
+        if let Some(key_index) = white_keys.iter().position(|white_key| white_key.key == key) {
+            let x_pos = key_index as f32 * (white_key_width + key_spacing) - window_width / 2.0
+                + white_key_width / 2.0; // Centered on screen
+            let y_pos = (-window_height / 2.0) + white_key_width * note.tick as f32;
+
+            commands.spawn((
+                Mesh2d(note_mesh.clone()),
+                MeshMaterial2d(note_material.clone()),
+                Transform::from_xyz(x_pos, y_pos, 0.0),
+            ));
+        } else {
+            // Handle the case where the key is not found
+            eprintln!("Key not found: {}", key);
+        }
     }
 }
 
