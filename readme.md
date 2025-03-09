@@ -1,7 +1,19 @@
-cargo watch -x "wasm-pack build --target web"
+# Run development environment
 
-wasm-pack build --dev --target web
+## Run the compiler in watch mode
 
-# Run the server
+```bash
+cargo watch -x "wasm-pack build --dev --target web"
+```
 
+## Run the server
+
+```bash
 npx server .
+```
+
+# For building the project
+
+```bash
+wasm-pack build --target web
+```
