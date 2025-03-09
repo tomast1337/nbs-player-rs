@@ -1,57 +1,38 @@
 use log;
-use nbs_rs::{NbsFile, NbsParser, Note};
-use pixels::Pixels;
-use pixels::SurfaceTexture;
+use nbs_rs::{NbsFile, NbsParser};
+use std::cell::RefCell;
+use std::rc::Rc;
 use std::str;
 use std::thread;
 use std::time::{Duration, Instant};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{window, AudioBuffer, AudioBufferSourceNode, AudioContext};
+use web_sys::{window, AudioBuffer, AudioContext};
 
-async fn load_audio() -> Result<Vec<AudioBuffer>, JsValue> {
-    let bass = include_bytes!("../assets/bass.ogg"); // 1 - Double Bass
-    let bd = include_bytes!("../assets/bd.ogg"); // 2 - Bass Drum
-    let harp = include_bytes!("../assets/harp.ogg"); // 0 - Piano
-    let snare = include_bytes!("../assets/snare.ogg"); // 3 - Snare Drum
-    let hat = include_bytes!("../assets/hat.ogg"); // 4 - Click
-    let guitar = include_bytes!("../assets/guitar.ogg"); // 5 - Guitar
-    let flute = include_bytes!("../assets/flute.ogg"); // 6 - Flute
-    let bell = include_bytes!("../assets/bell.ogg"); // 7 - Bell
-    let icechime = include_bytes!("../assets/icechime.ogg"); // 8 - Chime
-    let xylobone = include_bytes!("../assets/xylobone.ogg"); // 9 - Xylophone
-    let iron_xylophone = include_bytes!("../assets/iron_xylophone.ogg"); // 10 - Iron Xylophone
-    let cow_bell = include_bytes!("../assets/cow_bell.ogg"); // 11 - Cow Bell
-    let didgeridoo = include_bytes!("../assets/didgeridoo.ogg"); // 12 - Didgeridoo
-    let bit = include_bytes!("../assets/bit.ogg"); // 13 - Bit
-    let banjo = include_bytes!("../assets/banjo.ogg"); // 14 - Banjo
-    let pling = include_bytes!("../assets/pling.ogg"); // 15 - Pling
-
+async fn load_audio(audio_ctx: &AudioContext) -> Result<Vec<AudioBuffer>, JsValue> {
     let sounds: Vec<&[u8]> = vec![
-        bass,
-        bd,
-        harp,
-        snare,
-        hat,
-        guitar,
-        flute,
-        bell,
-        icechime,
-        xylobone,
-        iron_xylophone,
-        cow_bell,
-        didgeridoo,
-        bit,
-        banjo,
-        pling,
+        include_bytes!("../assets/bass.ogg"),
+        include_bytes!("../assets/bd.ogg"),
+        include_bytes!("../assets/harp.ogg"),
+        include_bytes!("../assets/snare.ogg"),
+        include_bytes!("../assets/hat.ogg"),
+        include_bytes!("../assets/guitar.ogg"),
+        include_bytes!("../assets/flute.ogg"),
+        include_bytes!("../assets/bell.ogg"),
+        include_bytes!("../assets/icechime.ogg"),
+        include_bytes!("../assets/xylobone.ogg"),
+        include_bytes!("../assets/iron_xylophone.ogg"),
+        include_bytes!("../assets/cow_bell.ogg"),
+        include_bytes!("../assets/didgeridoo.ogg"),
+        include_bytes!("../assets/bit.ogg"),
+        include_bytes!("../assets/banjo.ogg"),
+        include_bytes!("../assets/pling.ogg"),
     ];
-
-    // Create an AudioContext
-    let audio_ctx = AudioContext::new().unwrap();
 
     // Decode each sound and store the resulting AudioBuffer
     let mut audio_buffers = Vec::new();
+
     for sound in sounds {
         let array_buffer = js_sys::Uint8Array::from(sound).buffer();
         let audio_buffer_promise = audio_ctx.decode_audio_data(&array_buffer)?;
@@ -214,116 +195,124 @@ struct PianoKey {
     is_pressed: bool,
 }
 
-pub struct App<'a> {
+fn now() -> f64 {
+    if let Some(window) = window() {
+        if let Some(performance) = window.performance() {
+            return performance.now();
+        }
+    }
+    panic!("Unable to get current time");
+}
+
+fn request_animation_frame(f: &Closure<dyn FnMut()>) {
+    if let Some(window) = window() {
+        window
+            .request_animation_frame(f.as_ref().unchecked_ref())
+            .expect("Failed to request animation frame");
+    }
+}
+
+pub struct App {
     canvas_width: f32,
     canvas_height: f32,
-    pixels: Pixels<'a>, // Add Pixels for rendering
+    ctx: web_sys::CanvasRenderingContext2d,
     black_keys: Vec<PianoKey>,
     white_keys: Vec<PianoKey>,
+    white_key_width: f32,
+    white_key_height: f32,
+    black_key_width: f32,
+    black_key_height: f32,
+
     song: NbsFile,
 
     audio_buffers: Vec<AudioBuffer>,
     audio_ctx: AudioContext,
 
-    song_name: String,
     current_tick: u32,
-    white_key_width: f32,
-    white_key_height: f32,
-    black_key_width: f32,
-    black_key_height: f32,
     paused: bool,
 }
 
-impl<'a> App<'a> {
+impl App {
     pub async fn new(
         width: Option<f32>,
         height: Option<f32>,
         song_data: Option<&[u8]>,
         canvas_id: Option<&str>,
-    ) -> App<'a> {
+    ) -> Result<Rc<RefCell<App>>, JsValue> {
+        // Load song
+        let song = load_nbs_file(song_data);
+
+        // Load audio
+        let audio_ctx = AudioContext::new().unwrap();
+        let audio_buffers = load_audio(&audio_ctx).await?;
+
         // 16:9 aspect ratio
         let canvas_width = width.unwrap_or(1280.0);
         let canvas_height = height.unwrap_or(720.0);
 
-        let document = window().unwrap().document().unwrap();
-
-        let canvas = document
-            .get_element_by_id(canvas_id.unwrap_or("canvas").as_ref())
-            .unwrap()
-            .dyn_into::<web_sys::HtmlCanvasElement>()?;
-
         let (white_keys, black_keys) = generate_piano_keys();
-
-        // Load song
-        let song = load_nbs_file(song_data);
-        let song_name = str::from_utf8(&song.header.song_name).unwrap();
-        let song_author = str::from_utf8(&song.header.song_author).unwrap();
-        let title = format!("{} - {}", song_name, song_author);
 
         let (white_key_width, white_key_height, black_key_width, black_key_height) =
             calculate_key_dimensions(canvas_width, canvas_height, &white_keys);
 
-        // Load audio
-        let audio_buffers = load_audio().await?;
+        let document = window().unwrap().document().unwrap();
+        let canvas = document
+            .get_element_by_id(canvas_id.unwrap_or("canvas").as_ref())
+            .ok_or_else(|| JsValue::from_str("Canvas element not found"))?
+            .dyn_into::<web_sys::HtmlCanvasElement>()?;
 
-        // Initialize Pixels
-        let surface_texture =
-            SurfaceTexture::new(canvas.width() as u32, canvas.height() as u32, &canvas);
-        let pixels = Pixels::new(
-            canvas.width() as u32,
-            canvas.height() as u32,
-            surface_texture,
-        )?;
+        // Set the canvas size
+        canvas.set_width(canvas_width as u32);
+        canvas.set_height(canvas_height as u32);
 
-        App {
+        // Initialize canvas context
+        let ctx = canvas
+            .get_context("2d")?
+            .unwrap()
+            .dyn_into::<web_sys::CanvasRenderingContext2d>()?;
+
+        Ok(Rc::new(RefCell::new(App {
             paused: true,
             canvas_width,
             canvas_height,
-            pixels,
+            ctx,
             audio_buffers,
-            audio_ctx: AudioContext::new().unwrap(),
+            audio_ctx,
             black_keys,
             white_keys,
             song: song,
-            song_name: title,
             current_tick: 0,
             white_key_width,
             white_key_height,
             black_key_width,
             black_key_height,
-        }
+        })))
     }
 
-    pub fn run(&mut self) {
-        log::info!("Running app");
-        let update_interval = Duration::from_millis(50); // 20 ticks per second (1000ms / 20 = 50ms)
-        let mut next_update = Instant::now() + update_interval;
-
-        loop {
-            let now = Instant::now();
-
-            // Update at 20 ticks per second
-            if !self.paused && now >= next_update {
-                self.update();
-                next_update = now + update_interval;
-            }
-
-            // Render at 120 FPS (or as fast as possible)
-            self.render();
-
-            // Yield control to the OS to avoid busy-waiting
-            thread::sleep(Duration::from_millis(1));
-        }
-    }
+    pub fn run(&self) {}
 
     pub fn update(&mut self) {
-        log::info!("Updating app");
         // Update game logic here
         self.current_tick += 1;
     }
 
     pub fn render(&self) {
-        log::info!("Rendering app");
+        // Clear the canvas
+        self.ctx.clear_rect(
+            0.0,
+            0.0,
+            self.canvas_width as f64,
+            self.canvas_height as f64,
+        );
+
+        // draw song info
+        self.draw_song_info();
+
+        // draw piano keys
+        //self.draw_piano_keys();
+
+        // draw note
+        //self.draw_notes();
     }
 
     pub fn change_tick(&mut self, tick: u32) {
@@ -365,6 +354,53 @@ impl<'a> App<'a> {
 
         Ok(())
     }
+
+    fn draw_piano_keys(&self) {
+        todo!()
+    }
+
+    fn draw_song_info(&self) {
+        let song = &self.song;
+        let song_name = str::from_utf8(&song.header.song_name).unwrap();
+        let song_author = str::from_utf8(&song.header.song_author).unwrap();
+        let song_tempo = song.header.tempo;
+        let song_ticks = song.header.song_length;
+        let current_tick = self.current_tick;
+
+        self.ctx.set_font("20px Arial");
+        self.ctx.set_fill_style(&JsValue::from_str("black"));
+        self.ctx
+            .fill_text(&format!("Name: {}", song_name), 10.0, 20.0)
+            .unwrap();
+
+        self.ctx
+            .fill_text(&format!("Author: {}", song_author), 10.0, 40.0)
+            .unwrap();
+
+        self.ctx
+            .fill_text(&format!("Tempo: {}", song_tempo), 10.0, 60.0)
+            .unwrap();
+
+        self.ctx
+            .fill_text(&format!("Ticks: {}", song_ticks), 10.0, 80.0)
+            .unwrap();
+
+        self.ctx
+            .fill_text(&format!("Current Tick: {}", current_tick), 10.0, 100.0)
+            .unwrap();
+
+        self.ctx
+            .fill_text(
+                &format!("{} of {} ticks", current_tick, song_ticks),
+                10.0,
+                120.0,
+            )
+            .unwrap();
+    }
+
+    fn draw_notes(&self) {
+        todo!()
+    }
 }
 
 #[wasm_bindgen]
@@ -376,7 +412,7 @@ pub fn start() -> Result<(), JsValue> {
         match App::new(None, None, None, None).await {
             Ok(app) => {
                 log::info!("Setup successful!");
-                app.play_sound(3).unwrap();
+                app.borrow_mut().run();
             }
             Err(e) => {
                 log::info!("Error: {:?}", e);
