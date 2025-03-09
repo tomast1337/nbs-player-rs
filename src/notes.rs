@@ -1,60 +1,71 @@
-/*
 use bevy::prelude::*;
-use nbs_rs::Note;
 
-use crate::{
-    piano::{self, PianoKey},
-    AppState,
-};
-
-static NOTE_TEXTURE: &[u8] = include_bytes!("../assets/note_block.png");
-
-// Resource to hold the song data
-#[derive(Resource)]
-pub struct SongData {
-    pub notes: Vec<Note>,
-}
+use crate::{piano, song::SongData};
 
 #[derive(Component)]
-pub struct NoteComponent {
-    key: u8,       //  MIDI note number
-    sound: u8,     // Index into the SOUNDS array
-    velocity: f32, // Pixels per second
+pub struct Note {
+    speed: f32, // Speed at which the note falls
 }
 
-// Spawn notes based on the current tick
-pub fn spawn_notes(
+pub fn setup_notes(
     mut commands: Commands,
-    song: Res<SongData>,
-    time: Res<Time>,
+    mut meshes: ResMut<Assets<Mesh>>,
     asset_server: Res<AssetServer>,
-    app_state: Res<AppState>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+    song: Res<SongData>,
+    window: Query<&Window>,
 ) {
-    let current_tick = (time.elapsed_secs() * 1000.0) as u16; // Convert time to ticks
-    let white_key_width = app_state.white_key_width;
-    let key_spacing = app_state.key_spacing;
+    // TODO: This part is not working correctly
+    let window = window.single();
+    let window_width = window.width();
+    let window_height = window.height();
 
-    for note in &song.notes {
-        if note.tick <= current_tick {
-            let _x_pos = (note.key as f32 - 60.0) * (white_key_width + key_spacing); // Adjust for middle C
-            let _y_pos = 300.0; // Start at the top of the screen
+    let song = &song.nbs_file;
+    let notes = &song.notes;
 
-            // Load the note texture
-            let texture = asset_server.load("assets/note_block.png");
+    let key_spacing = 1.; // Spacing between keys
+
+    let num_white_keys = 52;
+    let white_key_width = (window_width / num_white_keys as f32) - key_spacing;
+
+    let white_keys = piano::generate_piano_keys().0;
+
+    let note_texture_handle: Handle<Image> = asset_server.load("note_block.png");
+
+    let layers_len = song.layers.len() as f32;
+
+    let note_mesh = meshes.add(Rectangle::new(white_key_width, white_key_width));
+
+    for note in notes {
+        let key = note.key;
+        if let Some(key_index) = white_keys.iter().position(|white_key| white_key.key == key) {
+            let x_pos = key_index as f32 * (white_key_width + key_spacing) - window_width / 2.0
+                + white_key_width / 2.0; // Centered on screen
+            let y_pos = (-window_height / 2.0) + white_key_width * note.tick as f32;
+
+            let note_layer = note.layer as f32;
+
+            let note_material = materials.add(ColorMaterial {
+                alpha_mode: bevy::sprite::AlphaMode2d::Opaque,
+                texture: Some(note_texture_handle.clone()),
+                color: Color::hsl(note_layer / layers_len, 1.0, 0.5),
+            });
 
             commands.spawn((
-                Sprite {
-                    image: texture.clone(),
-                    ..default()
-                },
-                NoteComponent {
-                    key: note.key,
-                    sound: note.instrument, // Use the instrument as the sound index
-                    velocity: 100.0,        // Pixels per second
-                },
+                Mesh2d(note_mesh.clone()),
+                MeshMaterial2d(note_material.clone()),
+                Transform::from_xyz(x_pos, y_pos, -1.0),
+                Note { speed: 100.0 },
             ));
+        } else {
+            // Handle the case where the key is not found
+            eprintln!("Key not found: {}", key);
         }
     }
 }
 
-*/
+pub fn update_notes(time: Res<Time>, mut query: Query<(&mut Transform, &Note)>) {
+    for (mut transform, note) in query.iter_mut() {
+        transform.translation.y -= note.speed * time.delta_secs();
+    }
+}
