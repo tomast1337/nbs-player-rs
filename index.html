@@ -8,9 +8,20 @@
     <script type="module">
         import init, { start } from "./pkg/nbs_player_rs.js";
 
+
+
         async function run() {
+            const song = await fetch("/test-assets/turkish_march.nbs");
+            const songBuffer = await song.arrayBuffer();
+            const songArray = new Uint8Array(songBuffer);
+
             await init();
-            start();
+            start(
+                848, // width
+                480, // height
+                songArray, // song
+                "canvas"
+            );
         }
 
         run();
