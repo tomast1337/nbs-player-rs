@@ -1,113 +1,14 @@
-use glow::HasContext;
 use log;
 use nbs_rs::{NbsFile, NbsParser, Note};
+use pixels::Pixels;
+use pixels::SurfaceTexture;
 use std::str;
 use std::thread;
 use std::time::{Duration, Instant};
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::spawn_local;
 use wasm_bindgen_futures::JsFuture;
-use web_sys::{console, window, AudioBuffer, AudioBufferSourceNode, AudioContext};
-
-struct PianoKey {
-    key: u8,
-    label: String,
-    is_pressed: bool,
-}
-
-pub struct App {
-    canvas_width: f32,
-    canvas_height: f32,
-    // gl: glow::Context, // WebGL context
-    black_keys: Vec<PianoKey>,
-    white_keys: Vec<PianoKey>,
-    song: NbsFile,
-
-    audio_buffers: Vec<AudioBuffer>,
-    audio_ctx: AudioContext,
-
-    song_name: String,
-    current_tick: u32,
-    white_key_width: f32,
-    white_key_height: f32,
-    black_key_width: f32,
-    black_key_height: f32,
-    paused: bool,
-}
-
-impl App {
-    pub fn run(&mut self) {
-        log::info!("Running app");
-        let update_interval = Duration::from_millis(50); // 20 ticks per second (1000ms / 20 = 50ms)
-        let mut next_update = Instant::now() + update_interval;
-
-        loop {
-            let now = Instant::now();
-
-            // Update at 20 ticks per second
-            if !self.paused && now >= next_update {
-                self.update();
-                next_update = now + update_interval;
-            }
-
-            // Render at 120 FPS (or as fast as possible)
-            self.render();
-
-            // Yield control to the OS to avoid busy-waiting
-            thread::sleep(Duration::from_millis(1));
-        }
-    }
-
-    pub fn update(&mut self) {
-        log::info!("Updating app");
-        // Update game logic here
-        self.current_tick += 1;
-    }
-
-    pub fn render(&self) {
-        log::info!("Rendering app");
-    }
-
-    pub fn change_tick(&mut self, tick: u32) {
-        self.current_tick = tick;
-    }
-
-    pub fn play_sound(&self, index: usize) -> Result<(), JsValue> {
-        if index >= self.audio_buffers.len() {
-            return Err(JsValue::from_str("Index out of bounds"));
-        }
-
-        // Ensure the audio context is running
-        if self.audio_ctx.state() == web_sys::AudioContextState::Suspended {
-            let promise = self.audio_ctx.resume();
-            match promise {
-                Ok(promise) => {
-                    let future = JsFuture::from(promise);
-                    wasm_bindgen_futures::spawn_local(async move {
-                        if let Err(e) = future.await {
-                            web_sys::console::error_1(&e);
-                        }
-                    });
-                }
-                Err(e) => {
-                    web_sys::console::error_1(&e);
-                }
-            }
-        }
-
-        // Create a new AudioBufferSourceNode
-        let source = self.audio_ctx.create_buffer_source()?;
-        source.set_buffer(Some(&self.audio_buffers[index]));
-
-        // Connect the source to the destination (speakers)
-        source.connect_with_audio_node(&self.audio_ctx.destination())?;
-
-        // Start playback
-        source.start()?;
-
-        Ok(())
-    }
-}
+use web_sys::{window, AudioBuffer, AudioBufferSourceNode, AudioContext};
 
 async fn load_audio() -> Result<Vec<AudioBuffer>, JsValue> {
     let bass = include_bytes!("../assets/bass.ogg"); // 1 - Double Bass
@@ -300,68 +201,170 @@ fn calculate_key_dimensions(
     )
 }
 
-async fn setup(
-    width: Option<f32>,
-    height: Option<f32>,
-    song_data: Option<&[u8]>,
-) -> Result<App, JsValue> {
-    // 16:9 aspect ratio
-    let canvas_width = width.unwrap_or(1280.0);
-    let canvas_height = height.unwrap_or(720.0);
-
-    let document = window().unwrap().document().unwrap();
-
-    let canvas = document
-        .get_element_by_id("canvas")
-        .unwrap()
-        .dyn_into::<web_sys::HtmlCanvasElement>()?;
-
-    let webgl2_context = canvas
-        .get_context("webgl2")
-        .unwrap()
-        .unwrap()
-        .dyn_into::<web_sys::WebGl2RenderingContext>()?;
-
-    let gl: glow::Context;
-
-    let (white_keys_vec, black_keys_vec) = generate_piano_keys();
-
-    // Load song
+fn load_nbs_file(song_data: Option<&[u8]>) -> NbsFile {
     let song_data_bytes = song_data.unwrap_or(include_bytes!("../test-assets/nyan_cat.nbs"));
     let mut song_file = NbsParser::new(song_data_bytes);
     let song = song_file.parse().unwrap();
-    let song_name = str::from_utf8(&song.header.song_name).unwrap();
-    let song_author = str::from_utf8(&song.header.song_author).unwrap();
+    song
+}
 
-    let title = format!("{} - {}", song_name, song_author);
+struct PianoKey {
+    key: u8,
+    label: String,
+    is_pressed: bool,
+}
 
-    log::info!("Loaded song: {}", title);
+pub struct App<'a> {
+    canvas_width: f32,
+    canvas_height: f32,
+    pixels: Pixels<'a>, // Add Pixels for rendering
+    black_keys: Vec<PianoKey>,
+    white_keys: Vec<PianoKey>,
+    song: NbsFile,
 
-    let (white_key_width, white_key_height, black_key_width, black_key_height) =
-        calculate_key_dimensions(canvas_width, canvas_height, &white_keys_vec);
+    audio_buffers: Vec<AudioBuffer>,
+    audio_ctx: AudioContext,
 
-    // Load audio
-    let audio_buffers = load_audio().await?;
+    song_name: String,
+    current_tick: u32,
+    white_key_width: f32,
+    white_key_height: f32,
+    black_key_width: f32,
+    black_key_height: f32,
+    paused: bool,
+}
 
-    let app = App {
-        paused: true,
-        canvas_width,
-        canvas_height,
-        //gl,
-        audio_buffers,
-        audio_ctx: AudioContext::new().unwrap(),
-        black_keys: black_keys_vec,
-        white_keys: white_keys_vec,
-        song: song,
-        song_name: title,
-        current_tick: 0,
-        white_key_width,
-        white_key_height,
-        black_key_width,
-        black_key_height,
-    };
+impl<'a> App<'a> {
+    pub async fn new(
+        width: Option<f32>,
+        height: Option<f32>,
+        song_data: Option<&[u8]>,
+        canvas_id: Option<&str>,
+    ) -> App<'a> {
+        // 16:9 aspect ratio
+        let canvas_width = width.unwrap_or(1280.0);
+        let canvas_height = height.unwrap_or(720.0);
 
-    Ok(app)
+        let document = window().unwrap().document().unwrap();
+
+        let canvas = document
+            .get_element_by_id(canvas_id.unwrap_or("canvas").as_ref())
+            .unwrap()
+            .dyn_into::<web_sys::HtmlCanvasElement>()?;
+
+        let (white_keys, black_keys) = generate_piano_keys();
+
+        // Load song
+        let song = load_nbs_file(song_data);
+        let song_name = str::from_utf8(&song.header.song_name).unwrap();
+        let song_author = str::from_utf8(&song.header.song_author).unwrap();
+        let title = format!("{} - {}", song_name, song_author);
+
+        let (white_key_width, white_key_height, black_key_width, black_key_height) =
+            calculate_key_dimensions(canvas_width, canvas_height, &white_keys);
+
+        // Load audio
+        let audio_buffers = load_audio().await?;
+
+        // Initialize Pixels
+        let surface_texture =
+            SurfaceTexture::new(canvas.width() as u32, canvas.height() as u32, &canvas);
+        let pixels = Pixels::new(
+            canvas.width() as u32,
+            canvas.height() as u32,
+            surface_texture,
+        )?;
+
+        App {
+            paused: true,
+            canvas_width,
+            canvas_height,
+            pixels,
+            audio_buffers,
+            audio_ctx: AudioContext::new().unwrap(),
+            black_keys,
+            white_keys,
+            song: song,
+            song_name: title,
+            current_tick: 0,
+            white_key_width,
+            white_key_height,
+            black_key_width,
+            black_key_height,
+        }
+    }
+
+    pub fn run(&mut self) {
+        log::info!("Running app");
+        let update_interval = Duration::from_millis(50); // 20 ticks per second (1000ms / 20 = 50ms)
+        let mut next_update = Instant::now() + update_interval;
+
+        loop {
+            let now = Instant::now();
+
+            // Update at 20 ticks per second
+            if !self.paused && now >= next_update {
+                self.update();
+                next_update = now + update_interval;
+            }
+
+            // Render at 120 FPS (or as fast as possible)
+            self.render();
+
+            // Yield control to the OS to avoid busy-waiting
+            thread::sleep(Duration::from_millis(1));
+        }
+    }
+
+    pub fn update(&mut self) {
+        log::info!("Updating app");
+        // Update game logic here
+        self.current_tick += 1;
+    }
+
+    pub fn render(&self) {
+        log::info!("Rendering app");
+    }
+
+    pub fn change_tick(&mut self, tick: u32) {
+        self.current_tick = tick;
+    }
+
+    pub fn play_sound(&self, index: usize) -> Result<(), JsValue> {
+        if index >= self.audio_buffers.len() {
+            return Err(JsValue::from_str("Index out of bounds"));
+        }
+
+        // Ensure the audio context is running
+        if self.audio_ctx.state() == web_sys::AudioContextState::Suspended {
+            let promise = self.audio_ctx.resume();
+            match promise {
+                Ok(promise) => {
+                    let future = JsFuture::from(promise);
+                    wasm_bindgen_futures::spawn_local(async move {
+                        if let Err(e) = future.await {
+                            web_sys::console::error_1(&e);
+                        }
+                    });
+                }
+                Err(e) => {
+                    web_sys::console::error_1(&e);
+                }
+            }
+        }
+
+        // Create a new AudioBufferSourceNode
+        let source = self.audio_ctx.create_buffer_source()?;
+        source.set_buffer(Some(&self.audio_buffers[index]));
+
+        // Connect the source to the destination (speakers)
+        source.connect_with_audio_node(&self.audio_ctx.destination())?;
+
+        // Start playback
+        source.start()?;
+
+        Ok(())
+    }
 }
 
 #[wasm_bindgen]
@@ -370,7 +373,7 @@ pub fn start() -> Result<(), JsValue> {
     console_error_panic_hook::set_once();
 
     spawn_local(async {
-        match setup(None, None, None).await {
+        match App::new(None, None, None, None).await {
             Ok(app) => {
                 log::info!("Setup successful!");
                 app.play_sound(3).unwrap();
