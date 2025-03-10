@@ -8,6 +8,11 @@ pub struct PianoKey {
     pub white_key_index: Option<usize>,
 }
 
+#[derive(Resource)]
+pub struct PianoData {
+    pub white_key_height: f32,
+}
+
 pub fn generate_piano_keys() -> (Vec<PianoKey>, Vec<PianoKey>) {
     let white_keys: [(&str, i32); 52] = [
         ("A0", 21),
@@ -163,6 +168,9 @@ pub fn setup_piano(
     let black_key_mesh = meshes.add(Rectangle::new(black_key_width, black_key_height));
     let white_key_material = materials.add(Color::WHITE);
     let black_key_material = materials.add(Color::BLACK);
+
+    // Add piano data to resources
+    commands.insert_resource(PianoData { white_key_height });
 
     // Draw white keys
     for (i, piano_key) in white_keys.iter().enumerate() {
