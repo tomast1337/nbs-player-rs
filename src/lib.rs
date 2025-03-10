@@ -17,16 +17,21 @@ pub fn start(
     let song = song::load_nbs_file(song_data);
     let mut app = App::new();
 
-    app.add_plugins((DefaultPlugins.set(WindowPlugin {
-        primary_window: Some(Window {
-            resolution: (width.unwrap_or(848.), height.unwrap_or(480.)).into(),
-            canvas: Some(canvas_id.unwrap_or_else(|| "canvas".to_string())),
+    app.add_plugins((DefaultPlugins
+        .set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (width.unwrap_or(848.), height.unwrap_or(480.)).into(),
+                canvas: Some(canvas_id.unwrap_or_else(|| "canvas".to_string())),
+                ..default()
+            }),
+            exit_condition: bevy::window::ExitCondition::OnPrimaryClosed,
+            close_when_requested: false,
+            ..Default::default()
+        })
+        .set(AssetPlugin {
+            meta_check: bevy::asset::AssetMetaCheck::Never,
             ..default()
-        }),
-        exit_condition: bevy::window::ExitCondition::DontExit,
-        close_when_requested: false,
-        ..Default::default()
-    }),))
+        }),))
         .insert_resource(SongData { nbs_file: song })
         .add_systems(
             Startup,
