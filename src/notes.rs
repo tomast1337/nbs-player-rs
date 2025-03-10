@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{piano, song::SongData};
+use crate::{piano, song::SongData, NoteSounds};
 use nbs_rs;
 #[derive(Component)]
 pub struct Note {
@@ -75,6 +75,8 @@ pub fn update_notes(
     mut query: Query<(&mut Transform, &mut Note)>,
     window: Query<&mut Window>,
     piano_data: Res<piano::PianoData>,
+    asset_server: Res<NoteSounds>,
+    mut commands: Commands,
 ) {
     let window = window.single();
     let window_height = window.height();
@@ -84,6 +86,11 @@ pub fn update_notes(
         transform.translation.y -= note.speed * time.delta_secs();
 
         if transform.translation.y < y_target && note.was_played == false {
+            let note_key = note.note.key;
+            let note_instrument = note.note.instrument;
+            let note_sound = asset_server.sounds.get(&note_instrument).unwrap();
+            let audio = note_sound.clone();
+            commands.spawn(AudioPlayer::new(audio));
             note.was_played = true;
         }
     }

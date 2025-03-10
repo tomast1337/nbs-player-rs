@@ -44,10 +44,32 @@ pub fn start(
     Ok(())
 }
 
-fn setup(
-    mut commands: Commands,
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
-) {
+#[derive(Resource)]
+struct NoteSounds {
+    sounds: bevy::utils::hashbrown::HashMap<u8, Handle<AudioSource>>, // Maps note keys to audio handles
+}
+
+fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
     commands.spawn(Camera2d);
+
+    commands.insert_resource(NoteSounds {
+        sounds: bevy::utils::hashbrown::HashMap::from([
+            (0, asset_server.load("bass.ogg")),
+            (1, asset_server.load("bd.ogg")),
+            (2, asset_server.load("harp.ogg")),
+            (3, asset_server.load("snare.ogg")),
+            (4, asset_server.load("hat.ogg")),
+            (5, asset_server.load("guitar.ogg")),
+            (6, asset_server.load("flute.ogg")),
+            (7, asset_server.load("bell.ogg")),
+            (8, asset_server.load("icechime.ogg")),
+            (9, asset_server.load("xylobone.ogg")),
+            (10, asset_server.load("iron_xylophone.ogg")),
+            (11, asset_server.load("cow_bell.ogg")),
+            (12, asset_server.load("didgeridoo.ogg")),
+            (13, asset_server.load("bit.ogg")),
+            (14, asset_server.load("banjo.ogg")),
+            (15, asset_server.load("pling.ogg")),
+        ]),
+    });
 }
