@@ -1,7 +1,7 @@
-use bevy::prelude::*;
-
 use crate::{piano, song::SongData, NoteSounds};
+use bevy::{audio, prelude::*};
 use nbs_rs;
+use std::time::Duration;
 #[derive(Component)]
 pub struct Note {
     speed: f32, // Speed at which the note falls
@@ -77,6 +77,7 @@ pub fn update_notes(
     piano_data: Res<piano::PianoData>,
     note_sounds: Res<NoteSounds>,
     mut commands: Commands,
+    mut pitch_assets: ResMut<Assets<Pitch>>,
 ) {
     let window = window.single();
     let window_height = window.height();
@@ -86,11 +87,18 @@ pub fn update_notes(
         transform.translation.y -= note.speed * time.delta_secs();
 
         if transform.translation.y < y_target && !note.was_played {
-            //let note_key = note.note.key;
+            // Retrieve note sound
             let note_instrument = note.note.instrument;
-            let note_sound = note_sounds.sounds.get(&note_instrument).unwrap();
-            let audio = note_sound.clone();
-            commands.spawn(AudioPlayer::new(audio));
+            let note_sound: &Handle<AudioSource> =
+                note_sounds.sounds.get(&note_instrument).unwrap();
+            let audio: Handle<AudioSource> = note_sound.clone();
+
+            // Calculate frequency based on key
+            let midi_note = note.note.key as f32 + 21.0; // Convert key to MIDI note number
+            let frequency = 440.0 * 2.0f32.powf((midi_note - 69.0) / 12.0);
+
+            let pitch = pitch_assets.add(Pitch::new(frequency, Duration::from_secs_f32(0.5)));
+            commands.spawn((AudioPlayer::new(audio), PlaybackSettings::DESPAWN, pitch));
             note.was_played = true;
         }
     }

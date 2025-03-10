@@ -42,8 +42,7 @@ pub fn start(
                 notes::setup_notes,
             ),
         )
-        .add_systems(Update, notes::update_notes)
-        .add_systems(Update, update);
+        .add_systems(Update, notes::update_notes);
 
     app.run();
 
@@ -53,14 +52,6 @@ pub fn start(
 #[derive(Resource)]
 struct NoteSounds {
     sounds: bevy::utils::hashbrown::HashMap<u8, Handle<AudioSource>>, // Maps note keys to audio handles
-}
-
-fn update(time: Res<Time>, mut commands: Commands, asset_server: Res<NoteSounds>) {
-    if time.elapsed_secs() % 3.0 < time.delta_secs() {
-        let audio = asset_server.sounds.get(&0).unwrap();
-        commands.spawn(AudioPlayer::new(audio.clone()));
-        info!("Playing sound");
-    }
 }
 
 fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
