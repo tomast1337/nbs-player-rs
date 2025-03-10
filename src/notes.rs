@@ -1,10 +1,12 @@
 use bevy::prelude::*;
 
 use crate::{piano, song::SongData};
-
+use nbs_rs;
 #[derive(Component)]
 pub struct Note {
     speed: f32, // Speed at which the note falls
+    note: nbs_rs::Note,
+    was_played: bool,
 }
 
 pub fn setup_notes(
@@ -41,7 +43,7 @@ pub fn setup_notes(
         if let Some(key_index) = white_keys.iter().position(|white_key| white_key.key == key) {
             let x_pos = key_index as f32 * (white_key_width + key_spacing) - window_width / 2.0
                 + white_key_width / 2.0; // Centered on screen
-            let y_pos = (-window_height / 2.0) + white_key_width * note.tick as f32;
+            let y_pos = window_height + white_key_width * note.tick as f32;
 
             let note_layer = note.layer as f32;
 
@@ -55,7 +57,11 @@ pub fn setup_notes(
                 Mesh2d(note_mesh.clone()),
                 MeshMaterial2d(note_material.clone()),
                 Transform::from_xyz(x_pos, y_pos, -1.0),
-                Note { speed: 100.0 },
+                Note {
+                    speed: 100.0,
+                    note: note.clone(),
+                    was_played: false,
+                },
             ));
         } else {
             // Handle the case where the key is not found
@@ -64,8 +70,21 @@ pub fn setup_notes(
     }
 }
 
-pub fn update_notes(time: Res<Time>, mut query: Query<(&mut Transform, &Note)>) {
-    for (mut transform, note) in query.iter_mut() {
+pub fn update_notes(
+    time: Res<Time>,
+    mut query: Query<(&mut Transform, &mut Note)>,
+    window: Query<&mut Window>,
+    piano_data: Res<piano::PianoData>,
+) {
+    let window = window.single();
+    let window_height = window.height();
+    let white_key_height = piano_data.white_key_height;
+    let y_target = -window_height / 2.0 - white_key_height;
+    for (mut transform, mut note) in query.iter_mut() {
         transform.translation.y -= note.speed * time.delta_secs();
+
+        if transform.translation.y < y_target && note.was_played == false {
+            note.was_played = true;
+        }
     }
 }
