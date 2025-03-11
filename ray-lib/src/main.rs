@@ -56,6 +56,19 @@ fn main() {
         // Update current tick based on elapsed time and tempo
         current_tick = elapsed_time * notes_per_second;
 
+        for key in &mut all_keys {
+            key.is_pressed = false;
+        }
+
+        if let Some(notes) = note_blocks.get(current_tick as usize) {
+            for note in notes {
+                if let Some(&key_index) = key_map.get(&note.key) {
+                    // Trigger the corresponding piano key
+                    all_keys[key_index].is_pressed = true;
+                }
+            }
+        }
+
         // Draw notes
         let window_start_tick = (current_tick - 100.0).max(0.0); // Start of sliding window
         let window_end_tick = current_tick + 100.0; // End of sliding window
