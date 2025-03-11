@@ -1,13 +1,27 @@
 use std::collections::HashMap;
 
+use log;
 use raylib::prelude::*;
 use song::load_nbs_file;
-
 mod note;
 mod piano;
 mod song;
 
+fn logger_callback(level: TraceLogLevel, text: &str) {
+    match level {
+        TraceLogLevel::LOG_ALL => log::trace!("{}", text),
+        TraceLogLevel::LOG_TRACE => log::trace!("{}", text),
+        TraceLogLevel::LOG_DEBUG => log::debug!("{}", text),
+        TraceLogLevel::LOG_INFO => log::info!("{}", text),
+        TraceLogLevel::LOG_WARNING => log::warn!("{}", text),
+        TraceLogLevel::LOG_ERROR => log::error!("{}", text),
+        TraceLogLevel::LOG_FATAL => log::error!("{}", text),
+        TraceLogLevel::LOG_NONE => {}
+    }
+}
+
 fn main() {
+    colog::init();
     let window_width: f32 = 1280.;
     let window_height = 720.;
 
@@ -23,6 +37,8 @@ fn main() {
         .size(window_width as i32, window_height as i32)
         .title(title.as_str())
         .build();
+
+    rl.set_trace_log_callback(logger_callback).unwrap();
 
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
