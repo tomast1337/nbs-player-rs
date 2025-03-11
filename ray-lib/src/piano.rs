@@ -2,13 +2,15 @@ use std::collections::HashMap;
 
 use raylib::prelude::*;
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub struct PianoProps {
     pub key_spacing: f32,
     pub white_key_width: f32,
     pub white_key_height: f32,
     pub black_key_width: f32,
     pub black_key_height: f32,
+    pub white_key_texture: Texture2D,
+    pub black_key_texture: Texture2D,
 }
 
 #[derive(Clone, Debug)]
@@ -170,61 +172,60 @@ pub fn draw_piano_keys(
     let white_key_height = piano_props.white_key_height;
     let black_key_width = piano_props.black_key_width;
     let black_key_height = piano_props.black_key_height;
-    // Single drawing loop
+    let white_key_texture = &piano_props.white_key_texture;
+    let black_key_texture = &piano_props.black_key_texture;
+
+    let total_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
+    let total_width = total_white_keys * (white_key_width + key_spacing) - key_spacing;
+
     for (i, key) in all_keys.iter().enumerate() {
-        let (x_pos, y_pos, width, height, color, text_color) = if key.is_white {
-            // White key positioning
-            let x = i as f32 * (white_key_width + key_spacing) - window_width / 2.0
-                + white_key_width / 2.0;
-            let y = (white_key_height / 2.0) + window_height / 2.0 - white_key_height;
+        let (x_pos, y_pos, width, height, texture, text_color) = if key.is_white {
+            let x =
+                (i as f32 * (white_key_width + key_spacing)) + (window_width - total_width) / 2.0;
+            let y = window_height - white_key_height;
             (
                 x,
                 y,
                 white_key_width,
                 white_key_height,
-                if key.is_pressed {
-                    Color::GRAY
-                } else {
-                    Color::WHITE
-                },
+                white_key_texture,
                 Color::BLACK,
             )
         } else if let Some(white_idx) = key.white_key_index {
-            // Black key positioning
-            let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing) - window_width / 2.0
-                + black_key_width / 2.0;
-            let y = (black_key_height / 2.0) + window_height / 2.0 - black_key_height;
+            let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
+            let y = window_height - white_key_height;
             (
                 x,
                 y,
                 black_key_width,
                 black_key_height,
-                if key.is_pressed {
-                    Color::DARKGRAY
-                } else {
-                    Color::BLACK
-                },
+                black_key_texture,
                 Color::WHITE,
             )
         } else {
             continue;
         };
 
-        // Draw key
-        d.draw_rectangle(
-            (x_pos + window_width / 2.0 - width / 2.0) as i32,
-            (y_pos + window_height / 2.0 - height / 2.0) as i32,
-            width as i32,
-            height as i32,
-            color,
+        // Draw key with texture
+        d.draw_texture_pro(
+            texture,
+            Rectangle::new(0.0, 0.0, texture.width as f32, texture.height as f32),
+            Rectangle::new(x_pos, y_pos, width, height),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            if key.is_pressed {
+                Color::GRAY
+            } else {
+                Color::WHITE
+            },
         );
 
         // Draw label
         d.draw_text(
             &key.label,
-            (x_pos + window_width / 2.0 - width / 2.0 + 5.0) as i32,
-            (y_pos + window_height / 2.0 - height / 2.0) as i32,
-            10,
+            (x_pos + width / 2.0 - 5.0) as i32,
+            (y_pos + height - 20.0) as i32,
+            8,
             text_color,
         );
     }
@@ -234,7 +235,11 @@ pub fn initialize_piano_dimensions(
     window_width: f32,
     window_height: f32,
     all_keys: &Vec<PianoKey>,
+    rl: &mut RaylibHandle,
+    thread: &RaylibThread,
 ) -> PianoProps {
+    let (white_key_texture, black_key_texture) = load_piano_key_textures(rl, &thread);
+
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
     let key_size_relative_to_screen = 0.1;
@@ -254,5 +259,29 @@ pub fn initialize_piano_dimensions(
         white_key_height,
         black_key_width,
         black_key_height,
+        white_key_texture,
+        black_key_texture,
     }
+}
+
+pub fn load_piano_key_textures(
+    rl: &mut RaylibHandle,
+    thread: &RaylibThread,
+) -> (Texture2D, Texture2D) {
+    let key_black_bytes = include_bytes!("../assets/key_black.png");
+    let key_white_bytes = include_bytes!("../assets/key_white.png");
+    //let note_image = Image::load_image_from_mem(".png", note_image_bytes).unwrap();
+    //let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
+    //note_texture
+    let key_black_image = Image::load_image_from_mem(".png", key_black_bytes).unwrap();
+    let key_white_image = Image::load_image_from_mem(".png", key_white_bytes).unwrap();
+
+    let key_black_texture = rl
+        .load_texture_from_image(thread, &key_black_image)
+        .unwrap();
+    let key_white_texture = rl
+        .load_texture_from_image(thread, &key_white_image)
+        .unwrap();
+
+    (key_white_texture, key_black_texture)
 }
