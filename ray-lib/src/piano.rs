@@ -24,6 +24,20 @@ pub struct PianoKey {
     pub press_velocity: f32,
 }
 
+impl PianoKey {
+    fn new(key: u8, label: &str, is_white: bool, white_key_index: Option<usize>) -> Self {
+        Self {
+            key,
+            label: label.to_string(),
+            white_key_index: white_key_index,
+            is_white,
+            is_pressed: false,
+            press_offset: 0.0,
+            press_velocity: 0.0,
+        }
+    }
+}
+
 pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
     let white_keys: [(&str, i32); 52] = [
         ("A0", 21),
@@ -122,15 +136,7 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
     let white_keys_vec: Vec<PianoKey> = white_keys
         .iter()
         .enumerate()
-        .map(|(index, (label, key))| PianoKey {
-            key: *key as u8,
-            label: label.to_string(),
-            is_pressed: false,
-            white_key_index: Some(index),
-            is_white: true,
-            press_offset: 0.0,
-            press_velocity: 0.0,
-        })
+        .map(|(index, (label, key))| PianoKey::new(*key as u8, label, true, Some(index)))
         .collect();
 
     let black_keys_vec: Vec<PianoKey> = black_keys
@@ -141,15 +147,7 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
                 .position(|white_key| white_key.key > *key as u8)
                 .map(|index| index.saturating_sub(1));
 
-            PianoKey {
-                key: *key as u8,
-                label: label.to_string(),
-                is_pressed: false,
-                white_key_index,
-                is_white: false,
-                press_offset: 0.0,
-                press_velocity: 0.0,
-            }
+            PianoKey::new(*key as u8, label, false, white_key_index)
         })
         .collect();
 
@@ -167,9 +165,9 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 }
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 1200.0;
-    const DAMPING: f32 = 20.0;
-    const SPRING_CONSTANT: f32 = 800.0;
+    const PRESS_FORCE: f32 = 1200.; // How hard the key is pressed
+    const DAMPING: f32 = 19.; // How quickly the key returns to rest
+    const SPRING_CONSTANT: f32 = 800.; // How quickly the key returns to rest
 
     for key in keys.iter_mut() {
         if key.is_pressed {
@@ -298,20 +296,19 @@ pub fn load_piano_key_textures(
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
 ) -> (Texture2D, Texture2D) {
-    let key_black_bytes = include_bytes!("../assets/key_black.png");
-    let key_white_bytes = include_bytes!("../assets/key_white.png");
-    //let note_image = Image::load_image_from_mem(".png", note_image_bytes).unwrap();
-    //let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
-    //note_texture
-    let key_black_image = Image::load_image_from_mem(".png", key_black_bytes).unwrap();
-    let key_white_image = Image::load_image_from_mem(".png", key_white_bytes).unwrap();
+    let (key_black_bytes, key_white_bytes) = (
+        include_bytes!("../assets/key_black.png"),
+        include_bytes!("../assets/key_white.png"),
+    );
+    let (key_black_image, key_white_image) = (
+        Image::load_image_from_mem(".png", key_black_bytes).unwrap(),
+        Image::load_image_from_mem(".png", key_white_bytes).unwrap(),
+    );
 
-    let key_black_texture = rl
-        .load_texture_from_image(thread, &key_black_image)
-        .unwrap();
-    let key_white_texture = rl
-        .load_texture_from_image(thread, &key_white_image)
-        .unwrap();
-
-    (key_white_texture, key_black_texture)
+    (
+        rl.load_texture_from_image(thread, &key_white_image)
+            .unwrap(),
+        rl.load_texture_from_image(thread, &key_black_image)
+            .unwrap(),
+    )
 }
