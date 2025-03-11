@@ -6,4 +6,5 @@ edition = "2024"
 [dependencies]
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
 raylib = "5.0.2"
+samplerate-rs = "0.1.0"
 
