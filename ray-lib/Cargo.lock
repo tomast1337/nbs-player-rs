@@ -221,6 +221,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "libsamplerate"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bcbb68a750265482d1b1f70e3b4505da140c73960f8068726e2fd1ffb792c300"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "linux-raw-sys"
 version = "0.4.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -344,6 +353,7 @@ version = "0.1.0"
 dependencies = [
  "nbs-rs",
  "raylib",
+ "samplerate-rs",
 ]
 
 [[package]]
@@ -428,6 +438,15 @@ dependencies = [
  "libc",
  "linux-raw-sys",
  "windows-sys",
+]
+
+[[package]]
+name = "samplerate-rs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3449f851fc302cf4fa5027398fc28de660aef17fb55836efdecc90e1c7b40a36"
+dependencies = [
+ "libsamplerate",
 ]
 
 [[package]]
