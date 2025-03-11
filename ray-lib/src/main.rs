@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use raylib::prelude::*;
 use song::load_nbs_file;
 
@@ -6,7 +8,7 @@ mod piano;
 mod song;
 
 fn main() {
-    let window_width = 1280.;
+    let window_width: f32 = 1280.;
     let window_height = 720.;
 
     let nbs_file = load_nbs_file(None);
@@ -23,20 +25,26 @@ fn main() {
 
     let (all_keys, key_map) = piano::generate_piano_keys();
 
-    let piano_props = piano::initialize_piano_dimensions(window_width, window_height, &all_keys);
+    let piano_props = piano::initialize_piano_dimensions(
+        window_width,
+        window_height,
+        &all_keys,
+        &mut rl,
+        &thread,
+    );
 
     let note_blocks = note::get_note_blocks(&nbs_file);
 
-    let note_image_bytes = include_bytes!("../assets/note_block.png");
-    let note_image = Image::load_image_from_mem(".png", note_image_bytes).unwrap();
-    let note_texture = rl.load_texture_from_image(&thread, &note_image).unwrap();
+    let note_texture = load_note_texture(&mut rl, &thread);
+
+    load_sound_assets(None);
+
+    let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
+    let mut elapsed_time = 0.0; // Elapsed time in seconds
 
     let notes_per_second = 10.0; // Adjust based on song tempo
     let note_dim = piano_props.white_key_width;
     let key_spacing = piano_props.key_spacing; // Spacing between keys
-
-    let mut current_tick; // Current tick in the song
-    let mut elapsed_time = 0.0; // Elapsed time in seconds
 
     while !rl.window_should_close() {
         let delta_time = rl.get_frame_time();
@@ -46,13 +54,13 @@ fn main() {
         d.draw_fps(window_width as i32 - 100, 10);
 
         // Update current tick based on elapsed time and tempo
-        current_tick = (elapsed_time * notes_per_second) as usize;
+        current_tick = elapsed_time * notes_per_second;
 
         // Draw notes
-        let window_start_tick = current_tick.saturating_sub(100); // Start of sliding window
-        let window_end_tick = current_tick + 100; // End of sliding window
+        let window_start_tick = (current_tick - 100.0).max(0.0); // Start of sliding window
+        let window_end_tick = current_tick + 100.0; // End of sliding window
 
-        for tick in window_start_tick..window_end_tick {
+        for tick in (window_start_tick as usize)..(window_end_tick as usize) {
             if let Some(notes) = note_blocks.get(tick) {
                 for note in notes {
                     if let Some(&key_index) = key_map.get(&note.key) {
@@ -118,4 +126,35 @@ fn main() {
 
         piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, d);
     }
+}
+
+fn load_sound_assets(extra_sounds: Option<Vec<String>>) -> HashMap<u32, &'static [u8]> {
+    println!("{:?}", extra_sounds);
+    let mut sounds_data = HashMap::new();
+
+    sounds_data.insert(0, include_bytes!("../assets/bass.ogg") as &[u8]);
+    sounds_data.insert(1, include_bytes!("../assets/bd.ogg") as &[u8]);
+    sounds_data.insert(2, include_bytes!("../assets/harp.ogg") as &[u8]);
+    sounds_data.insert(3, include_bytes!("../assets/snare.ogg") as &[u8]);
+    sounds_data.insert(4, include_bytes!("../assets/hat.ogg") as &[u8]);
+    sounds_data.insert(5, include_bytes!("../assets/guitar.ogg") as &[u8]);
+    sounds_data.insert(6, include_bytes!("../assets/flute.ogg") as &[u8]);
+    sounds_data.insert(7, include_bytes!("../assets/bell.ogg") as &[u8]);
+    sounds_data.insert(8, include_bytes!("../assets/icechime.ogg") as &[u8]);
+    sounds_data.insert(9, include_bytes!("../assets/xylobone.ogg") as &[u8]);
+    sounds_data.insert(10, include_bytes!("../assets/iron_xylophone.ogg") as &[u8]);
+    sounds_data.insert(11, include_bytes!("../assets/cow_bell.ogg") as &[u8]);
+    sounds_data.insert(12, include_bytes!("../assets/didgeridoo.ogg") as &[u8]);
+    sounds_data.insert(13, include_bytes!("../assets/bit.ogg") as &[u8]);
+    sounds_data.insert(14, include_bytes!("../assets/banjo.ogg") as &[u8]);
+    sounds_data.insert(15, include_bytes!("../assets/pling.ogg") as &[u8]);
+
+    sounds_data
+}
+
+fn load_note_texture(rl: &mut RaylibHandle, thread: &RaylibThread) -> Texture2D {
+    let note_image_bytes = include_bytes!("../assets/note_block.png");
+    let note_image = Image::load_image_from_mem(".png", note_image_bytes).unwrap();
+    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
+    note_texture
 }
