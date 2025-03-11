@@ -70,11 +70,12 @@ fn main() {
         }
 
         // Draw notes
-        let window_start_tick = (current_tick - 100.0).max(0.0); // Start of sliding window
-        let window_end_tick = current_tick + 100.0; // End of sliding window
+        let window_start_tick = (current_tick - 100.0).max(0.0) as i32; // Start of sliding window
+        let window_end_tick = (current_tick as i32) + 100; // End of sliding window
 
-        for tick in (window_start_tick as usize)..(window_end_tick as usize) {
-            if let Some(notes) = note_blocks.get(tick) {
+        for tick in window_start_tick..window_end_tick {
+            let tick = tick as f32; // Convert tick to f32 for calculations
+            if let Some(notes) = note_blocks.get(tick as usize) {
                 for note in notes {
                     if let Some(&key_index) = key_map.get(&note.key) {
                         let piano_key = &all_keys[key_index];
@@ -96,44 +97,41 @@ fn main() {
                             - ((tick as f32 - current_tick as f32) * (note_dim))
                             - note_dim;
 
-                        let note_rect = Rectangle::new(
-                            x_pos + window_width / 2.0 - note_dim / 2.0,
-                            y_pos,
-                            note_dim,
-                            note_dim,
-                        );
-                        d.draw_texture_pro(
-                            &note_texture,
-                            Rectangle::new(
-                                0.0,
-                                0.0,
-                                note_texture.width as f32,
-                                note_texture.height as f32,
-                            ), // Source rectangle (entire texture)
-                            note_rect,              // Destination rectangle
-                            Vector2::new(0.0, 0.0), // Origin (top-left corner)
-                            0.0,                    // Rotation
-                            Color::WHITE,           // Tint color
-                        );
+                        // Check if the note is visible on the screen
+                        if y_pos + note_dim > 0.0 && y_pos < window_height {
+                            let note_rect = Rectangle::new(
+                                x_pos + window_width / 2.0 - note_dim / 2.0,
+                                y_pos,
+                                note_dim,
+                                note_dim,
+                            );
 
-                        // Draw the tone (note name) on the note
-                        let text = &piano_key.label; // Use the note label (e.g., "C4", "D#5")
-                        let text_width = d.measure_text(text, 10); // Measure text width
-                        let text_x = note_rect.x + (note_rect.width - text_width as f32) / 2.0; // Center text horizontally
-                        let text_y = note_rect.y + (note_rect.height - 10.0) / 2.0; // Center text vertically
+                            d.draw_texture_pro(
+                                &note_texture,
+                                Rectangle::new(
+                                    0.0,
+                                    0.0,
+                                    note_texture.width as f32,
+                                    note_texture.height as f32,
+                                ),
+                                note_rect,
+                                Vector2::new(0.0, 0.0),
+                                0.0,
+                                Color::WHITE,
+                            );
 
-                        d.draw_text(
-                            text,
-                            text_x as i32,
-                            text_y as i32,
-                            10,
-                            Color::WHITE, // Text color
-                        );
+                            // Draw the tone (note name) on the note
+                            let text = &piano_key.label;
+                            let text_width = d.measure_text(text, 10);
+                            let text_x = note_rect.x + (note_rect.width - text_width as f32) / 2.0;
+                            let text_y = note_rect.y + (note_rect.height - 10.0) / 2.0;
+
+                            d.draw_text(text, text_x as i32, text_y as i32, 10, Color::WHITE);
+                        }
                     }
                 }
             }
         }
-
         d.clear_background(Color::DARKGRAY);
         d.draw_text(&title, 12, 12, 20, Color::BLACK);
         piano::update_key_animation(&mut all_keys, delta_time);
