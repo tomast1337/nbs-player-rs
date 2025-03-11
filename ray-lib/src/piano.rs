@@ -216,7 +216,7 @@ pub fn draw_piano_keys(
         let (x_pos, y_pos, width, height, texture, text_color) = if key.is_white {
             let x =
                 (i as f32 * (white_key_width + key_spacing)) + (window_width - total_width) / 2.0;
-            let y = window_height - white_key_height + key.press_offset; // Add press offset here
+            let y = window_height - white_key_height - key.press_offset;
             (
                 x,
                 y,
@@ -227,7 +227,7 @@ pub fn draw_piano_keys(
             )
         } else if let Some(white_idx) = key.white_key_index {
             let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
-            let y = window_height - white_key_height + key.press_offset; // And here for black keys
+            let y = window_height - white_key_height - key.press_offset;
             (
                 x,
                 y,
