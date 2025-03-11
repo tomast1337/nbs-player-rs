@@ -97,7 +97,7 @@ fn main() {
 
                         // Draw the tone (note name) on the note
                         let text = &piano_key.label; // Use the note label (e.g., "C4", "D#5")
-                        let text_width = 10; //rl.measure_text(text, 10); // Measure text width
+                        let text_width = d.measure_text(text, 10); // Measure text width
                         let text_x = note_rect.x + (note_rect.width - text_width as f32) / 2.0; // Center text horizontally
                         let text_y = note_rect.y + (note_rect.height - 10.0) / 2.0; // Center text vertically
 
