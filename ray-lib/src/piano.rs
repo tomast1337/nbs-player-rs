@@ -199,7 +199,7 @@ pub fn draw_piano_keys(
     window_height: f32,
     all_keys: &Vec<PianoKey>,
     piano_props: &PianoProps,
-    mut d: RaylibDrawHandle<'_>,
+    d: &mut RaylibDrawHandle<'_>,
 ) {
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
