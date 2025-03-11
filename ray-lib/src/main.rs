@@ -50,31 +50,45 @@ fn main() {
         let delta_time = rl.get_frame_time();
         let mut d = rl.begin_drawing(&thread);
         elapsed_time += delta_time;
-        // show fps counter right top corner
+
+        // Show FPS counter
         d.draw_fps(window_width as i32 - 100, 10);
 
         // Update current tick based on elapsed time and tempo
         current_tick = elapsed_time * notes_per_second;
 
+        // Reset all key press states
         for key in &mut all_keys {
             key.is_pressed = false;
         }
 
+        // Trigger piano key presses for current tick
         if let Some(notes) = note_blocks.get(current_tick as usize) {
             for note in notes {
                 if let Some(&key_index) = key_map.get(&note.key) {
-                    // Trigger the corresponding piano key
                     all_keys[key_index].is_pressed = true;
                 }
             }
         }
 
         // Draw notes
-        let window_start_tick = (current_tick - 100.0).max(0.0) as i32; // Start of sliding window
-        let window_end_tick = (current_tick as i32) + 100; // End of sliding window
+        const SLIDING_WINDOW_SIZE: i32 = 100;
+        let window_start_tick = (current_tick - SLIDING_WINDOW_SIZE as f32).max(0.0) as i32;
+        let window_end_tick = (current_tick as i32) + SLIDING_WINDOW_SIZE;
+
+        let texture_source_rect = Rectangle::new(
+            0.0,
+            0.0,
+            note_texture.width as f32,
+            note_texture.height as f32,
+        );
+
+        let base_offset = -window_width / 2.0 + note_dim / 2.0;
+        let min_y = 0.0;
+        let max_y = window_height;
 
         for tick in window_start_tick..window_end_tick {
-            let tick = tick as f32; // Convert tick to f32 for calculations
+            let tick_f32 = tick as f32;
             if let Some(notes) = note_blocks.get(tick as usize) {
                 for note in notes {
                     if let Some(&key_index) = key_map.get(&note.key) {
@@ -82,23 +96,18 @@ fn main() {
 
                         // Calculate note position
                         let x_pos = if piano_key.is_white {
-                            // White key positioning
-                            key_index as f32 * (note_dim + key_spacing) - window_width / 2.0
-                                + note_dim / 2.0
+                            key_index as f32 * (note_dim + key_spacing) + base_offset
                         } else if let Some(white_idx) = piano_key.white_key_index {
-                            // Black key positioning
-                            (white_idx as f32 + 0.5) * (note_dim + key_spacing) - window_width / 2.0
-                                + note_dim / 2.0
+                            (white_idx as f32 + 0.5) * (note_dim + key_spacing) + base_offset
                         } else {
                             continue;
                         };
 
-                        let y_pos = window_height
-                            - ((tick as f32 - current_tick as f32) * (note_dim))
-                            - note_dim;
+                        let y_pos =
+                            window_height - ((tick_f32 - current_tick) * note_dim) - note_dim;
 
                         // Check if the note is visible on the screen
-                        if y_pos + note_dim > 0.0 && y_pos < window_height {
+                        if y_pos + note_dim > min_y && y_pos < max_y {
                             let note_rect = Rectangle::new(
                                 x_pos + window_width / 2.0 - note_dim / 2.0,
                                 y_pos,
@@ -108,12 +117,7 @@ fn main() {
 
                             d.draw_texture_pro(
                                 &note_texture,
-                                Rectangle::new(
-                                    0.0,
-                                    0.0,
-                                    note_texture.width as f32,
-                                    note_texture.height as f32,
-                                ),
+                                texture_source_rect,
                                 note_rect,
                                 Vector2::new(0.0, 0.0),
                                 0.0,
@@ -132,8 +136,12 @@ fn main() {
                 }
             }
         }
+
+        // Clear background and draw UI
         d.clear_background(Color::DARKGRAY);
         d.draw_text(&title, 12, 12, 20, Color::BLACK);
+
+        // Update and draw piano keys
         piano::update_key_animation(&mut all_keys, delta_time);
         piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, d);
     }
