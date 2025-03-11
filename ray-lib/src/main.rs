@@ -23,7 +23,7 @@ fn main() {
         .title(title.as_str())
         .build();
 
-    let (all_keys, key_map) = piano::generate_piano_keys();
+    let (mut all_keys, key_map) = piano::generate_piano_keys();
 
     let piano_props = piano::initialize_piano_dimensions(
         window_width,
@@ -123,7 +123,7 @@ fn main() {
 
         d.clear_background(Color::DARKGRAY);
         d.draw_text(&title, 12, 12, 20, Color::BLACK);
-
+        piano::update_key_animation(&mut all_keys, delta_time);
         piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, d);
     }
 }
