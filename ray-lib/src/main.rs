@@ -15,8 +15,9 @@ fn main() {
 
     let song_name = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
-
     let title = format!("{} - {}", song_name, song_author);
+    let notes_per_second = 10.0; // Adjust based on song tempo
+    let total_duration = nbs_file.header.song_length as f32 / notes_per_second;
 
     let (mut rl, thread) = raylib::init()
         .size(window_width as i32, window_height as i32)
@@ -42,7 +43,6 @@ fn main() {
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time = 0.0; // Elapsed time in seconds
 
-    let notes_per_second = 10.0; // Adjust based on song tempo
     let note_dim = piano_props.white_key_width;
     let key_spacing = piano_props.key_spacing; // Spacing between keys
 
@@ -53,7 +53,8 @@ fn main() {
 
         // Show FPS counter
         d.draw_fps(window_width as i32 - 100, 10);
-
+        // Clear background and draw UI
+        d.clear_background(Color::DARKGRAY);
         // Update current tick based on elapsed time and tempo
         current_tick = elapsed_time * notes_per_second;
 
@@ -86,6 +87,9 @@ fn main() {
         let base_offset = -window_width / 2.0 + note_dim / 2.0;
         let min_y = 0.0;
         let max_y = window_height;
+
+        // Count notes being rendered
+        let mut notes_rendered = 0;
 
         for tick in window_start_tick..window_end_tick {
             let tick_f32 = tick as f32;
@@ -131,20 +135,33 @@ fn main() {
                             let text_y = note_rect.y + (note_rect.height - 10.0) / 2.0;
 
                             d.draw_text(text, text_x as i32, text_y as i32, 10, Color::WHITE);
+
+                            // Increment notes rendered count
+                            notes_rendered += 1;
                         }
                     }
                 }
             }
         }
 
-        // Clear background and draw UI
-        d.clear_background(Color::DARKGRAY);
-        d.draw_text(&title, 12, 12, 20, Color::BLACK);
+        //d.draw_text(&title, 12, 12, 20, Color::BLACK);
 
         // Update and draw piano keys
         piano::update_key_animation(&mut all_keys, delta_time);
-        piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, d);
+        piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, &mut d);
+
+        // Draw song status
+        let duration = format!("Duration: {:.2}/{:.2}s", elapsed_time, total_duration);
+        let notes_redered = format!("Notes Rendered: {}", notes_rendered);
+        let current_tick = format!("Current Tick: {:.4}", current_tick);
+
+        d.draw_text(&title, 12, 12, 20, Color::BLACK);
+        d.draw_text(&duration, 12, 42, 20, Color::BLACK);
+        d.draw_text(&notes_redered, 12, 72, 20, Color::BLACK);
+        d.draw_text(&current_tick, 12, 102, 20, Color::BLACK);
     }
+
+    println!("Goodbye!");
 }
 
 fn load_sound_assets(extra_sounds: Option<Vec<String>>) -> HashMap<u32, &'static [u8]> {
