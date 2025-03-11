@@ -19,7 +19,9 @@ pub struct PianoKey {
     pub label: String,
     pub is_pressed: bool,
     pub white_key_index: Option<usize>,
-    pub is_white: bool, // New field to distinguish key type
+    pub is_white: bool,
+    pub press_offset: f32,
+    pub press_velocity: f32,
 }
 
 pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
@@ -126,6 +128,8 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
             is_pressed: false,
             white_key_index: Some(index),
             is_white: true,
+            press_offset: 0.0,
+            press_velocity: 0.0,
         })
         .collect();
 
@@ -143,6 +147,8 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
                 is_pressed: false,
                 white_key_index,
                 is_white: false,
+                press_offset: 0.0,
+                press_velocity: 0.0,
             }
         })
         .collect();
@@ -158,6 +164,34 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
     }
 
     (all_keys, key_map)
+}
+
+pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
+    const PRESS_FORCE: f32 = 1200.0;
+    const DAMPING: f32 = 20.0;
+    const SPRING_CONSTANT: f32 = 800.0;
+
+    for key in keys.iter_mut() {
+        if key.is_pressed {
+            let force = -PRESS_FORCE - DAMPING * key.press_velocity;
+            key.press_velocity += force * delta_time;
+            key.press_offset += key.press_velocity * delta_time;
+
+            if key.press_offset < -5.0 {
+                key.press_offset = -5.0;
+                key.press_velocity = 0.0;
+            }
+        } else {
+            let force = -key.press_offset * SPRING_CONSTANT - DAMPING * key.press_velocity;
+            key.press_velocity += force * delta_time;
+            key.press_offset += key.press_velocity * delta_time;
+
+            if key.press_offset.abs() < 0.1 && key.press_velocity.abs() < 0.1 {
+                key.press_offset = 0.0;
+                key.press_velocity = 0.0;
+            }
+        }
+    }
 }
 
 pub fn draw_piano_keys(
@@ -182,7 +216,7 @@ pub fn draw_piano_keys(
         let (x_pos, y_pos, width, height, texture, text_color) = if key.is_white {
             let x =
                 (i as f32 * (white_key_width + key_spacing)) + (window_width - total_width) / 2.0;
-            let y = window_height - white_key_height;
+            let y = window_height - white_key_height + key.press_offset; // Add press offset here
             (
                 x,
                 y,
@@ -193,7 +227,7 @@ pub fn draw_piano_keys(
             )
         } else if let Some(white_idx) = key.white_key_index {
             let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
-            let y = window_height - white_key_height;
+            let y = window_height - white_key_height + key.press_offset; // And here for black keys
             (
                 x,
                 y,
