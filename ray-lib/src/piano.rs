@@ -247,11 +247,7 @@ pub fn draw_piano_keys(
             Rectangle::new(x_pos, y_pos, width, height),
             Vector2::new(0.0, 0.0),
             0.0,
-            if key.is_pressed {
-                Color::GRAY
-            } else {
-                Color::WHITE
-            },
+            Color::WHITE,
         );
 
         // Draw label
