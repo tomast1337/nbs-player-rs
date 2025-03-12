@@ -107,9 +107,9 @@ fn main() {
         // Count notes being rendered
         let mut notes_rendered = 0;
 
-        for tick in window_start_tick..window_end_tick {
+        for tick in window_start_tick as usize..window_end_tick as usize {
             let tick_f32 = tick as f32;
-            if let Some(notes) = note_blocks.get(tick as usize) {
+            if let Some(notes) = note_blocks.get(tick) {
                 for note in notes {
                     if let Some(&key_index) = key_map.get(&note.key) {
                         let piano_key = &all_keys[key_index];
@@ -159,8 +159,6 @@ fn main() {
                 }
             }
         }
-
-        //d.draw_text(&title, 12, 12, 20, Color::BLACK);
 
         // Update and draw piano keys
         piano::update_key_animation(&mut all_keys, delta_time);
