@@ -4,21 +4,21 @@ use kira::{
     PlaybackRate, Tween, Value,
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
 };
-use lewton::inside_ogg::OggStreamReader;
+use lewton::{inside_ogg::OggStreamReader, samples};
 use rubato::{FftFixedInOut, VecResampler};
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 
 use crate::note::NoteBlock;
 #[derive(Debug, Clone)]
-struct Mixer(Vec<Vec<f32>>);
+struct Mixer(Vec<SoundData>);
 impl Mixer {
-    fn mix_samples(&self) -> Vec<f32> {
+    fn mix_samples(&self) -> Arc<[Frame]> {
         // Find the longest sample to determine final length
-        let max_length = (&self.0).iter().map(|s| s.len()).max().unwrap_or(0);
+        let max_length = (&self.0).iter().map(|s| s.0.len()).max().unwrap_or(0);
         let mut mixed = vec![0.0; max_length];
         // Mix all samples together
         for samples in &self.0 {
-            for (i, &sample) in samples.iter().enumerate() {
+            for (i, &sample) in samples.0.iter().enumerate() {
                 mixed[i] += sample;
             }
         }
@@ -27,14 +27,17 @@ impl Mixer {
         if max_amplitude > 1.0 {
             mixed.iter_mut().for_each(|s| *s /= max_amplitude);
         }
-        mixed
+
+        // Convert to frames
+        let frames = mixed.iter().map(|&s| Frame::new(s, s)).collect::<Vec<_>>();
+        return frames.into();
     }
 }
 #[derive(Debug, Clone)]
 struct SoundData(Vec<f32>, u32); // Samples, sample rate
 
 impl SoundData {
-    fn new(data: &[u8]) -> Result<SoundData, lewton::VorbisError> {
+    pub fn new(data: &[u8]) -> Result<SoundData, lewton::VorbisError> {
         let cursor = Cursor::new(data);
         let mut stream = OggStreamReader::new(cursor).expect("Failed to read Ogg stream");
         let mut samples = Vec::new();
@@ -48,7 +51,7 @@ impl SoundData {
         return Ok(SoundData(samples, stream.ident_hdr.audio_sample_rate));
     }
 
-    fn apply_volume_and_panning(&mut self, volume: f32, pan: f32) -> &mut Self {
+    pub fn apply_volume_and_panning(&mut self, volume: f32, pan: f32) -> &mut Self {
         assert!(
             self.0.len() % 2 == 0,
             "Samples must be interleaved stereo pairs"
@@ -67,37 +70,55 @@ impl SoundData {
         return self;
     }
 
-    fn change_pitch(&mut self, pitch_factor: f32) -> &mut Self {
+    pub fn change_pitch(&mut self, pitch_factor: f32) -> &mut Self {
         let target_sample_rate = (self.1 as f32 * pitch_factor) as usize;
 
+        // Ensure the input data is valid stereo
+        assert!(
+            self.0.len() % 2 == 0,
+            "Samples must be interleaved stereo pairs"
+        );
+
+        // Prepare input frames as stereo pairs
+        let input_frames: Vec<Vec<f32>> = self
+            .0
+            .chunks_exact(2)
+            .map(|chunk| vec![chunk[0], chunk[1]])
+            .collect();
+
+        // Pad input frames to align with the resampler's chunk size
+        let chunk_size = 1024;
+        let padding_needed = (chunk_size - (input_frames.len() % chunk_size)) % chunk_size;
+        let mut padded_input_frames = input_frames.clone();
+        padded_input_frames.extend(vec![vec![0.0, 0.0]; padding_needed]);
+
+        // Initialize the resampler
         let mut resampler = FftFixedInOut::<f32>::new(
             self.1 as usize,    // Input sample rate
-            target_sample_rate, // Output sample rate (modified for pitch shift)
-            1024,               // Chunk size
+            target_sample_rate, // Output sample rate
+            chunk_size,         // Chunk size
             2,                  // Stereo channels
         )
         .expect("Failed to create resampler");
 
-        let input_frames = self
-            .0
-            .chunks(2)
-            .map(|chunk| chunk.to_vec())
-            .collect::<Vec<_>>();
+        // Resample the audio
         let output_frames = resampler
-            .process(&input_frames, None)
+            .process(&padded_input_frames, None)
             .expect("Failed to resample");
 
+        // Flatten the output frames back into interleaved stereo samples
         self.0 = output_frames
             .iter()
             .flat_map(|frame| frame.iter().cloned())
             .collect();
 
+        // Update the sample rate
         self.1 = target_sample_rate as u32;
 
         return self;
     }
 
-    fn encode(&mut self) -> Arc<[Frame]> {
+    pub fn encode(&mut self) -> Arc<[Frame]> {
         let mut cursor = Cursor::new(Vec::new());
         let mut writer = hound::WavWriter::new(
             &mut cursor,
@@ -137,8 +158,6 @@ pub struct AudioEngine {
 
 impl AudioEngine {
     pub fn new(extra_sounds: Option<Vec<&[u8]>>) -> Self {
-        println!("{:?}", extra_sounds);
-
         let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
         let mut sound_files = vec![
@@ -161,30 +180,20 @@ impl AudioEngine {
         ];
 
         if let Some(extra_sounds) = extra_sounds {
+            log::info!("Loaded {} extra sounds", extra_sounds.len());
             sound_files.extend(extra_sounds);
         }
 
         let mut sounds = HashMap::new();
 
         for (i, sound) in sound_files.iter().enumerate() {
-            let cursor = Cursor::new(sound);
-            let mut stream = OggStreamReader::new(cursor).expect("Failed to read Ogg stream");
-            let mut samples = Vec::new();
-            while let Ok(Some(pcm)) = stream.read_dec_packet_itl() {
-                samples.extend(
-                    pcm.into_iter()
-                        .map(|s| s as f32 / f32::from(i16::MAX)) // Normalize to [-1.0, 1.0]
-                        .collect::<Vec<f32>>(),
-                );
-            }
-
             sounds.insert(
                 i as u32,
-                SoundData(samples, stream.ident_hdr.audio_sample_rate),
+                SoundData::new(sound).expect("Failed to load sound data"),
             );
         }
 
-        log::info!("Loaded sounds");
+        log::info!("Loaded {} sounds", sounds.len());
 
         Self { manager, sounds }
     }
@@ -220,7 +229,7 @@ impl AudioEngine {
 
         let encoded = sound
             .apply_volume_and_panning(volume, pan)
-            .change_pitch(playback_rate)
+            //.change_pitch(playback_rate)
             .encode();
 
         let sound = StaticSoundData {
@@ -237,9 +246,58 @@ impl AudioEngine {
     }
 
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
-        if notes.is_empty() {
-            return; // Nothing to play
+        let mut samples = Vec::new();
+
+        for note in notes {
+            let sound_id = note.instrument as u32;
+            let key = note.key;
+            let velocity = note.velocity;
+            let panning = note.panning;
+            let pitch = note.pitch;
+
+            // Calculate the frequency from the MIDI key
+            let frequency_ratio = 2.0f32.powf((key as f32 - 69.0) / 12.0);
+
+            // Adjust the playback rate with pitch (cents)
+            let pitch_ratio = 2.0f32.powf(pitch as f32 / 1200.0);
+            let playback_rate = frequency_ratio * pitch_ratio;
+
+            // Map velocity (0–127) to decibels
+            let volume = velocity as f32 / 127.0;
+
+            // Map panning (-100 to 100) to a normalized range (-1.0 to 1.0)
+            let pan = panning as f32 / 100.0;
+
+            // Retrieve the sound data
+            let sound = match self.sounds.get(&sound_id) {
+                Some(data) => data.clone(),
+                None => {
+                    log::error!("Sound ID {} not found", sound_id);
+                    return;
+                }
+            };
+
+            let mut processed_sound = sound.clone();
+            processed_sound.apply_volume_and_panning(volume, pan);
+            //.change_pitch(playback_rate);
+
+            samples.push(processed_sound);
         }
-        todo!();
+
+        let mixer = Mixer(samples);
+
+        let final_sample = mixer.mix_samples();
+
+        let sound = StaticSoundData {
+            sample_rate: 44100,
+            frames: final_sample.into(),
+            settings: StaticSoundSettings::new(), // Default settings for sound playback
+            slice: None,
+        };
+
+        // Play the sound
+        if let Err(e) = self.manager.play(sound) {
+            log::error!("Failed to play sound: {}", e);
+        }
     }
 }

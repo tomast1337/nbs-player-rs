@@ -61,6 +61,12 @@ fn main() {
     let note_dim = piano_props.white_key_width;
     let key_spacing = piano_props.key_spacing; // Spacing between keys
 
+    let mut played_ticks = vec![];
+    // pre allocate memory for played_ticks
+    for _ in 0..(nbs_file.header.song_length as usize) {
+        played_ticks.push(false);
+    }
+
     while !rl.window_should_close() {
         let delta_time = rl.get_frame_time();
         let mut d = rl.begin_drawing(&thread);
@@ -80,12 +86,11 @@ fn main() {
 
         // get current tick notes to play
         if let Some(notes) = note_blocks.get((current_tick as f32).floor() as usize) {
-            audio_engine.play_tick(notes);
-            //for note in notes {
-            //    if note.was_played == false {
-            //        audio_engine.play_sound(note);
-            //    }
-            //}
+            // if tick notes are not played, play them
+            if !played_ticks[(current_tick as f32).floor() as usize] {
+                audio_engine.play_tick(notes);
+                played_ticks[(current_tick as f32).floor() as usize] = true;
+            }
         }
 
         // Trigger piano key presses for current and trigger audio
@@ -114,7 +119,7 @@ fn main() {
 
         let base_offset = -window_width / 2.0 + note_dim / 2.0;
         let min_y = 0.0;
-        let max_y = window_height;
+        let max_y = window_height - piano_props.white_key_height;
 
         // Count notes being rendered
         let mut notes_rendered = 0;
