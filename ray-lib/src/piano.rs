@@ -166,12 +166,12 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
     const PRESS_FORCE: f32 = 1200.; // How hard the key is pressed
-    const DAMPING: f32 = 19.; // How quickly the key returns to rest
+    const DAMPING: f32 = 20.; // How quickly the key returns to rest
     const SPRING_CONSTANT: f32 = 800.; // How quickly the key returns to rest
 
     for key in keys.iter_mut() {
         if key.is_pressed {
-            let force = -PRESS_FORCE - DAMPING * key.press_velocity;
+            let force = -PRESS_FORCE - DAMPING * (key.press_velocity + 1000.);
             key.press_velocity += force * delta_time;
             key.press_offset += key.press_velocity * delta_time;
 
