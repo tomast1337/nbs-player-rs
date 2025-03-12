@@ -20,6 +20,12 @@ fn logger_callback(level: TraceLogLevel, text: &str) {
     }
 }
 
+fn time_formatter(time: f32) -> String {
+    let minutes = (time / 60.0).floor() as u32;
+    let seconds = (time % 60.0) as u32;
+    format!("{:0>2}:{:0>2}", minutes, seconds)
+}
+
 fn main() {
     colog::init();
     let window_width: f32 = 1280.;
@@ -182,7 +188,11 @@ fn main() {
         piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props, &mut d);
 
         // Draw song status
-        let duration = format!("Duration: {:.2}/{:.2}s", elapsed_time, total_duration);
+        let duration = format!(
+            "Duration: {}|{}",
+            time_formatter(elapsed_time),
+            time_formatter(total_duration)
+        );
         let notes_redered = format!("Notes Rendered: {}", notes_rendered);
         let current_tick = format!("Current Tick: {:.4}", current_tick);
 
