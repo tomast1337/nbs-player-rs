@@ -1,10 +1,8 @@
-use dasp::Sample;
 use kira::{
-    self, AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Frame, Panning,
-    PlaybackRate, Tween, Value,
+    self, AudioManager, AudioManagerSettings, DefaultBackend, Frame,
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
 };
-use lewton::{inside_ogg::OggStreamReader, samples};
+use lewton::inside_ogg::OggStreamReader;
 use rubato::{FftFixedInOut, VecResampler};
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 
