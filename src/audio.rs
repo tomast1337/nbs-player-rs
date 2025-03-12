@@ -5,13 +5,129 @@ use kira::{
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
 };
 use lewton::inside_ogg::OggStreamReader;
+use rubato::{FftFixedInOut, VecResampler};
 use std::{collections::HashMap, io::Cursor, sync::Arc};
 
 use crate::note::NoteBlock;
+#[derive(Debug, Clone)]
+struct Mixer(Vec<Vec<f32>>);
+impl Mixer {
+    fn mix_samples(&self) -> Vec<f32> {
+        // Find the longest sample to determine final length
+        let max_length = (&self.0).iter().map(|s| s.len()).max().unwrap_or(0);
+        let mut mixed = vec![0.0; max_length];
+        // Mix all samples together
+        for samples in &self.0 {
+            for (i, &sample) in samples.iter().enumerate() {
+                mixed[i] += sample;
+            }
+        }
+        // Normalize to prevent clipping (optional)
+        let max_amplitude = mixed.iter().fold(0.0, |max, &s| s.abs().max(max));
+        if max_amplitude > 1.0 {
+            mixed.iter_mut().for_each(|s| *s /= max_amplitude);
+        }
+        mixed
+    }
+}
+#[derive(Debug, Clone)]
+struct SoundData(Vec<f32>, u32); // Samples, sample rate
 
-struct SoundData {
-    frames: Arc<[Frame]>,
-    sample_rate: u32,
+impl SoundData {
+    fn new(data: &[u8]) -> Result<SoundData, lewton::VorbisError> {
+        let cursor = Cursor::new(data);
+        let mut stream = OggStreamReader::new(cursor).expect("Failed to read Ogg stream");
+        let mut samples = Vec::new();
+        while let Ok(Some(pcm)) = stream.read_dec_packet_itl() {
+            samples.extend(
+                pcm.into_iter()
+                    .map(|s| s as f32 / f32::from(i16::MAX)) // Normalize to [-1.0, 1.0]
+                    .collect::<Vec<f32>>(),
+            );
+        }
+        return Ok(SoundData(samples, stream.ident_hdr.audio_sample_rate));
+    }
+
+    fn apply_volume_and_panning(&mut self, volume: f32, pan: f32) -> &mut Self {
+        assert!(
+            self.0.len() % 2 == 0,
+            "Samples must be interleaved stereo pairs"
+        );
+        assert!(
+            volume >= 0.0 && volume <= 1.0,
+            "Volume must be in range [0.0, 1.0]"
+        );
+        for i in (0..self.0.len()).step_by(2) {
+            let left = volume * (1.0 - pan);
+            let right = volume * pan;
+
+            self.0[i] *= left; // Left channel
+            self.0[i + 1] *= right; // Right channel
+        }
+        return self;
+    }
+
+    fn change_pitch(&mut self, pitch_factor: f32) -> &mut Self {
+        let target_sample_rate = (self.1 as f32 * pitch_factor) as usize;
+
+        let mut resampler = FftFixedInOut::<f32>::new(
+            self.1 as usize,    // Input sample rate
+            target_sample_rate, // Output sample rate (modified for pitch shift)
+            1024,               // Chunk size
+            2,                  // Stereo channels
+        )
+        .expect("Failed to create resampler");
+
+        let input_frames = self
+            .0
+            .chunks(2)
+            .map(|chunk| chunk.to_vec())
+            .collect::<Vec<_>>();
+        let output_frames = resampler
+            .process(&input_frames, None)
+            .expect("Failed to resample");
+
+        self.0 = output_frames
+            .iter()
+            .flat_map(|frame| frame.iter().cloned())
+            .collect();
+
+        self.1 = target_sample_rate as u32;
+
+        return self;
+    }
+
+    fn encode(&mut self) -> Arc<[Frame]> {
+        let mut cursor = Cursor::new(Vec::new());
+        let mut writer = hound::WavWriter::new(
+            &mut cursor,
+            hound::WavSpec {
+                channels: 2,
+                sample_rate: self.1 as u32,
+                bits_per_sample: 32,
+                sample_format: hound::SampleFormat::Float,
+            },
+        )
+        .expect("Failed to create WAV writer");
+
+        for &sample in self.0.iter() {
+            writer.write_sample(sample).expect("Failed to write sample");
+        }
+
+        writer.finalize().expect("Failed to finalize WAV file");
+
+        let data = cursor.into_inner();
+        let reader = hound::WavReader::new(Cursor::new(data)).expect("Failed to read WAV file");
+        let frames = reader
+            .into_samples::<f32>()
+            .map(|s| {
+                let sample = s.expect("Failed to read sample");
+                Frame::new(sample, sample)
+            })
+            .collect::<Vec<_>>();
+
+        return frames.into();
+    }
 }
 
 pub struct AudioEngine {
@@ -20,13 +136,12 @@ pub struct AudioEngine {
 }
 
 impl AudioEngine {
-    pub fn new(extra_sounds: Option<Vec<String>>) -> Self {
+    pub fn new(extra_sounds: Option<Vec<&[u8]>>) -> Self {
         println!("{:?}", extra_sounds);
 
-        let mut sounds = HashMap::new();
         let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
-        let sound_files = vec![
+        let mut sound_files = vec![
             include_bytes!("../assets/bass.ogg") as &[u8],
             include_bytes!("../assets/bd.ogg") as &[u8],
             include_bytes!("../assets/harp.ogg") as &[u8],
@@ -45,6 +160,12 @@ impl AudioEngine {
             include_bytes!("../assets/pling.ogg") as &[u8],
         ];
 
+        if let Some(extra_sounds) = extra_sounds {
+            sound_files.extend(extra_sounds);
+        }
+
+        let mut sounds = HashMap::new();
+
         for (i, sound) in sound_files.iter().enumerate() {
             let cursor = Cursor::new(sound);
             let mut stream = OggStreamReader::new(cursor).expect("Failed to read Ogg stream");
@@ -57,31 +178,9 @@ impl AudioEngine {
                 );
             }
 
-            // Convert samples to Frame based on channel count
-            let channels = stream.ident_hdr.audio_channels as usize;
-            let frames_vec: Vec<Frame> = match channels {
-                1 => {
-                    // Mono: each sample becomes a Frame with same left/right
-                    samples.iter().map(|s| Frame::from_mono(*s)).collect()
-                }
-                2 => {
-                    // Stereo: pair samples into left/right channels
-                    samples
-                        .chunks(2)
-                        .map(|chunk| Frame::new(chunk[0], chunk[1]))
-                        .collect()
-                }
-                _ => panic!("Unsupported channel count: {}", channels),
-            };
-            let frames: Arc<[Frame]> = Arc::from(frames_vec.as_slice());
-            let sample_rate = stream.ident_hdr.audio_sample_rate;
-
             sounds.insert(
                 i as u32,
-                SoundData {
-                    frames,
-                    sample_rate,
-                },
+                SoundData(samples, stream.ident_hdr.audio_sample_rate),
             );
         }
 
@@ -97,43 +196,42 @@ impl AudioEngine {
         let panning = note.panning;
         let pitch = note.pitch;
 
+        // Calculate the frequency from the MIDI key
+        let frequency_ratio = 2.0f32.powf((key as f32 - 69.0) / 12.0);
+
+        // Adjust the playback rate with pitch (cents)
+        let pitch_ratio = 2.0f32.powf(pitch as f32 / 1200.0);
+        let playback_rate = frequency_ratio * pitch_ratio;
+
+        // Map velocity (0–127) to decibels
+        let volume = velocity as f32 / 127.0;
+
+        // Map panning (-100 to 100) to a normalized range (-1.0 to 1.0)
+        let pan = panning as f32 / 100.;
+
         // Retrieve the sound data
-        let sound_data = match self.sounds.get(&sound_id) {
-            Some(data) => data,
+        let mut sound = match self.sounds.get(&sound_id) {
+            Some(data) => data.clone(),
             None => {
                 log::error!("Sound ID {} not found", sound_id);
                 return;
             }
         };
 
+        let encoded = sound
+            .apply_volume_and_panning(volume, pan)
+            .change_pitch(playback_rate)
+            .encode();
+
         let sound = StaticSoundData {
-            sample_rate: sound_data.sample_rate,
-            frames: sound_data.frames.clone(),
-            settings: StaticSoundSettings::default(),
+            sample_rate: sound.1,
+            frames: encoded,
+            settings: StaticSoundSettings::new(), // Default settings for sound playback
             slice: None,
         };
 
-        // Calculate the frequency from the MIDI key
-        let frequency_ratio = 2.0f64.powf((key as f64 - 69.0) / 12.0);
-
-        // Adjust the playback rate with pitch (cents)
-        let pitch_ratio = 2.0f64.powf(pitch as f64 / 1200.0);
-        let playback_rate = PlaybackRate(frequency_ratio * pitch_ratio);
-
-        // Map velocity (0–127) to decibels
-        let volume = Decibels::from(velocity as f32 / 127.0);
-
-        // Map panning (-100 to 100) to a normalized range (-1.0 to 1.0)
-        let pan = Panning(panning as f32 / 100.0);
-
-        // Configure sound settings
-        let settings = StaticSoundSettings::new()
-            .volume(volume)
-            .panning(pan)
-            .playback_rate(playback_rate);
-
-        // Play the sound with the specified settings
-        if let Err(e) = self.manager.play(sound.clone().with_settings(settings)) {
+        // Play the sound
+        if let Err(e) = self.manager.play(sound) {
             log::error!("Failed to play sound: {}", e);
         }
     }
@@ -142,72 +240,6 @@ impl AudioEngine {
         if notes.is_empty() {
             return; // Nothing to play
         }
-
-        // Step 1: Determine the maximum length of the mixed output
-        let mut max_frames = 0;
-        let mut sample_rate = 0;
-        for note in notes {
-            if let Some(sound_data) = self.sounds.get(&(note.instrument as u32)) {
-                let playback_rate = Self::calculate_playback_rate(note.key, note.pitch);
-                let adjusted_length = (sound_data.frames.len() as f64 / playback_rate.0) as usize;
-                max_frames = max_frames.max(adjusted_length);
-                sample_rate = sound_data.sample_rate; // Assume consistent sample rate
-            }
-        }
-
-        // Step 2: Mix all notes into a single Vec<Frame>
-        let mut mixed_frames = vec![Frame::ZERO; max_frames];
-        for note in notes {
-            let sound_id = note.instrument;
-            let sound_data = match self.sounds.get(&(sound_id as u32)) {
-                Some(data) => data,
-                None => {
-                    log::error!("Sound ID {} not found", sound_id);
-                    continue;
-                }
-            };
-
-            let playback_rate = Self::calculate_playback_rate(note.key, note.pitch);
-            let volume_f32 = note.velocity as f32 / 127.0; // Linear gain
-            let panning = Panning(note.panning as f32 / 100.0);
-
-            // Resample and mix frames
-            let frame_count = sound_data.frames.len();
-            for i in 0..max_frames {
-                let src_idx = (i as f64 * playback_rate.0) as usize;
-                if src_idx < frame_count {
-                    let frame = sound_data.frames[src_idx]
-                        .panned(panning) // Apply panning
-                        * volume_f32; // Apply volume (linear multiplication)
-                    mixed_frames[i].left += frame.left;
-                    mixed_frames[i].right += frame.right;
-                }
-            }
-        }
-
-        // Step 3: Apply a simple limiter (clamp to [-1.0, 1.0])
-        for frame in &mut mixed_frames {
-            frame.left = frame.left.clamp(-1.0, 1.0);
-            frame.right = frame.right.clamp(-1.0, 1.0);
-        }
-
-        // Step 4: Create and play the mixed sound
-        let sound = StaticSoundData {
-            sample_rate,
-            frames: Arc::from(mixed_frames.as_slice()),
-            settings: StaticSoundSettings::new(), // Default settings for tick playback
-            slice: None,
-        };
-
-        if let Err(e) = self.manager.play(sound) {
-            log::error!("Failed to play mixed tick: {}", e);
-        }
-    }
-
-    // Helper function to calculate playback rate
-    fn calculate_playback_rate(key: u8, pitch: i16) -> PlaybackRate {
-        let frequency_ratio = 2.0f64.powf((key as f64 - 69.0) / 12.0);
-        let pitch_ratio = 2.0f64.powf(pitch as f64 / 1200.0);
-        PlaybackRate(frequency_ratio * pitch_ratio)
+        todo!();
     }
 }
