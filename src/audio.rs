@@ -20,7 +20,7 @@ impl Mixer {
                 mixed[i] += sample;
             }
         }
-        // Normalize to prevent clipping (optional)
+        // Normalize to prevent clipping
         let max_amplitude = mixed.iter().fold(0.0, |max, &s| s.abs().max(max));
         if max_amplitude > 1.0 {
             mixed.iter_mut().for_each(|s| *s /= max_amplitude);
