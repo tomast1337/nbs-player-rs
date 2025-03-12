@@ -78,17 +78,20 @@ fn main() {
             key.is_pressed = false;
         }
 
+        // get current tick notes to play
+        if let Some(notes) = note_blocks.get((current_tick as f32).floor() as usize) {
+            audio_engine.play_tick(notes);
+            //for note in notes {
+            //    if note.was_played == false {
+            //        audio_engine.play_sound(note);
+            //    }
+            //}
+        }
+
         // Trigger piano key presses for current and trigger audio
         if let Some(notes) = note_blocks.get_mut(current_tick as usize) {
             for note in notes {
                 if note.was_played == false {
-                    audio_engine.play_sound(
-                        note.instrument as u32,
-                        note.key,
-                        note.velocity,
-                        note.panning,
-                        note.pitch,
-                    );
                     if let Some(&key_index) = key_map.get(&note.key) {
                         all_keys[key_index].is_pressed = true;
                     }
