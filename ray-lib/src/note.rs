@@ -1,3 +1,5 @@
+use std::f64::consts::E;
+
 use nbs_rs;
 
 #[derive(Clone, Debug)]
@@ -13,13 +15,13 @@ pub struct NoteBlock {
 }
 
 pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
-    // it groups the notes by tick
-    let mut note_blocks: Vec<Vec<NoteBlock>> = vec![];
-    for tick in 0..song.header.song_length {
-        let mut note_block: Vec<NoteBlock> = vec![];
-        let note = song.notes.iter().find(|note| note.tick == tick);
-        if let Some(note) = note {
-            note_block.push(NoteBlock {
+    // Pre allocate the ticks so it doesn't have to resize the on each iteration
+    let mut note_blocks: Vec<Vec<NoteBlock>> = vec![Vec::new(); song.header.song_length as usize];
+
+    for note in &song.notes {
+        let tick = note.tick as usize;
+        if tick < note_blocks.len() {
+            note_blocks[tick].push(NoteBlock {
                 was_played: false,
                 tick: note.tick,
                 layer: note.layer,
@@ -30,8 +32,13 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
                 pitch: note.pitch,
             });
         }
-
-        note_blocks.push(note_block);
     }
+
+    if !note_blocks.iter().all(Vec::is_empty) {
+        log::info!("Loaded note blocks");
+    } else {
+        log::warn!("No note blocks loaded");
+    }
+
     note_blocks
 }
