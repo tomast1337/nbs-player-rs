@@ -1,11 +1,10 @@
 use crate::note::NoteBlock;
-use dasp::sample;
 use kira::{
     self, AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Frame, Mix, Panning,
     PlaybackRate,
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
+    track::{TrackBuilder, TrackHandle},
 };
-use lewton::samples;
 use std::{collections::HashMap, io::Cursor, vec};
 
 #[derive(Debug, Clone)]
@@ -57,6 +56,7 @@ pub struct AudioEngine {
     manager: AudioManager<DefaultBackend>,
     sounds: HashMap<u32, StaticSoundData>,
     global_volume: f32,
+    main_track: TrackHandle,
 }
 
 impl AudioEngine {
@@ -67,7 +67,8 @@ impl AudioEngine {
     }
 
     pub fn new(extra_sounds: Option<Vec<&[u8]>>, global_volume: f32) -> Self {
-        let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
+        let mut manager =
+            AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
         let mut sound_files = vec![
             include_bytes!("../assets/bass.ogg") as &[u8],
@@ -100,8 +101,12 @@ impl AudioEngine {
         }
 
         log::info!("Loaded {} sounds", sounds.len());
+        let main_track = manager
+            .add_sub_track(TrackBuilder::new().volume(global_volume))
+            .unwrap();
 
         Self {
+            main_track,
             manager,
             sounds,
             global_volume,
@@ -117,7 +122,7 @@ impl AudioEngine {
         let _ = sample.volume(self.global_volume);
 
         // Play the sound with the specified settings
-        if let Err(e) = self.manager.play(sample) {
+        if let Err(e) = self.main_track.play(sample.clone()) {
             log::error!("Failed to play sound: {}", e);
         }
     }
@@ -141,12 +146,15 @@ impl AudioEngine {
             settings: StaticSoundSettings::default(),
             slice: None,
         };
-        let frequency_ratio = 2.0f64.powf((key as f64 - 69.0) / 12.0);
-        let pitch_ratio = 2.0f64.powf(pitch as f64 / 1200.0);
-        let playback_rate = PlaybackRate(frequency_ratio * pitch_ratio);
-        let volume = Decibels::from(velocity as f32 / 127.0);
-        let pan = Panning(panning as f32 / 100.0);
-        let settings = StaticSoundSettings::new()
+
+        let frequency_ratio = 2.0f64.powf((key as f64 + (pitch as f64 / 100.0) - 45.) / 12.0);
+        let playback_rate = PlaybackRate(frequency_ratio);
+
+        let volume: Decibels = Decibels::from(velocity as f32 / 127000.0);
+
+        let pan = Panning((panning as f32 / 100.0) - 1.);
+
+        let settings = StaticSoundSettings::default()
             .volume(volume)
             .panning(pan)
             .playback_rate(playback_rate);
@@ -157,27 +165,12 @@ impl AudioEngine {
     }
 
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
-        if notes.is_empty() {
-            return;
-        }
-
-        let mut samples = Vec::new();
-
         for note in notes {
-            let sample = match self.get_sound_data(note) {
-                Some(value) => value,
-                None => continue,
-            };
-
-            samples.push(sample);
-        }
-
-        // Mix all the sounds together
-        let mixed = Mixer::mix_samples(samples, 44100, self.global_volume);
-
-        // Play the sound with the specified settings
-        if let Err(e) = self.manager.play(mixed) {
-            log::error!("Failed to play sound: {}", e);
+            if let Some(sound) = self.get_sound_data(note) {
+                if let Err(e) = self.main_track.play(sound) {
+                    log::error!("Failed to play sound: {}", e);
+                }
+            }
         }
     }
 }
