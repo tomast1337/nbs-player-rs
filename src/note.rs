@@ -2,6 +2,16 @@ use std::f64::consts::E;
 
 use nbs_rs;
 
+pub fn load_note_texture(
+    rl: &mut raylib::RaylibHandle,
+    thread: &raylib::RaylibThread,
+) -> raylib::texture::Texture2D {
+    let note_image_bytes = include_bytes!("../assets/note_block.png");
+    let note_image = raylib::texture::Image::load_image_from_mem(".png", note_image_bytes).unwrap();
+    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
+    note_texture
+}
+
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
     pub was_played: bool,

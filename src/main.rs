@@ -36,7 +36,8 @@ fn main() {
     let song_name = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
     let title = format!("{} - {}", song_name, song_author);
-    let notes_per_second = nbs_file.header.tempo as f32 / 200.; // Adjust based on song tempo
+    let desired_ticks_per_second = 20.0;
+    let notes_per_second = nbs_file.header.tempo as f32 / 100.0;
     let total_duration = nbs_file.header.song_length as f32 / notes_per_second;
 
     let (mut rl, thread) = raylib::init()
@@ -57,7 +58,7 @@ fn main() {
         &thread,
     );
 
-    let note_texture = load_note_texture(&mut rl, &thread);
+    let note_texture = note::load_note_texture(&mut rl, &thread);
 
     let mut audio_engine = audio::AudioEngine::new(None, 0.5);
 
@@ -90,8 +91,8 @@ fn main() {
         if let Some(notes) = note_blocks.get((current_tick as f32).floor() as usize) {
             // if tick notes are not played, play them
             if !played_ticks[(current_tick as f32).floor() as usize] {
-                //audio_engine.play_tick(notes);
-                notes.iter().for_each(|note| audio_engine._play_sound(note));
+                audio_engine.play_tick(notes);
+                //notes.iter().for_each(|note| audio_engine._play_sound(note));
 
                 played_ticks[(current_tick as f32).floor() as usize] = true;
             }
@@ -199,11 +200,4 @@ fn main() {
         d.draw_text(&notes_redered, 12, 72, 20, Color::BLACK);
         d.draw_text(&current_tick, 12, 102, 20, Color::BLACK);
     }
-}
-
-fn load_note_texture(rl: &mut RaylibHandle, thread: &RaylibThread) -> Texture2D {
-    let note_image_bytes = include_bytes!("../assets/note_block.png");
-    let note_image = Image::load_image_from_mem(".png", note_image_bytes).unwrap();
-    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
-    note_texture
 }
