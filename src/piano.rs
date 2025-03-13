@@ -165,9 +165,9 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 }
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 1200.; // How hard the key is pressed
-    const DAMPING: f32 = 20.; // How quickly the key returns to rest
-    const SPRING_CONSTANT: f32 = 800.; // How quickly the key returns to rest
+    const PRESS_FORCE: f32 = 500000.;
+    const DAMPING: f32 = 20.;
+    const SPRING_CONSTANT: f32 = 700.;
 
     for key in keys.iter_mut() {
         if key.is_pressed {
@@ -225,7 +225,7 @@ pub fn draw_piano_keys(
             )
         } else if let Some(white_idx) = key.white_key_index {
             let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
-            let y = window_height - white_key_height - key.press_offset;
+            let y = window_height - 5. - white_key_height - key.press_offset;
             (
                 x,
                 y,
