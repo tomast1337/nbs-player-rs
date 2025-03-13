@@ -11,7 +11,11 @@ use std::{collections::HashMap, io::Cursor, vec};
 #[derive(Debug, Clone)]
 struct Mixer;
 impl Mixer {
-    fn mix_samples(samples: Vec<StaticSoundData>, sample_rate: u32) -> StaticSoundData {
+    fn mix_samples(
+        samples: Vec<StaticSoundData>,
+        sample_rate: u32,
+        global_volume: f32,
+    ) -> StaticSoundData {
         let max_len = samples.iter().map(|s| s.frames.len()).max().unwrap();
         let mut final_samples = vec![
             Frame {
@@ -33,7 +37,7 @@ impl Mixer {
             .iter()
             .map(|frame| frame.left.abs().max(frame.right.abs()))
             .fold(0.0, f32::max);
-        let limiter = 0.5 / max;
+        let limiter = global_volume / max;
 
         final_samples.iter_mut().for_each(|frame| {
             frame.left *= limiter;
@@ -52,6 +56,7 @@ impl Mixer {
 pub struct AudioEngine {
     manager: AudioManager<DefaultBackend>,
     sounds: HashMap<u32, StaticSoundData>,
+    global_volume: f32,
 }
 
 impl AudioEngine {
@@ -61,7 +66,7 @@ impl AudioEngine {
         sound_data
     }
 
-    pub fn new(extra_sounds: Option<Vec<&[u8]>>) -> Self {
+    pub fn new(extra_sounds: Option<Vec<&[u8]>>, global_volume: f32) -> Self {
         let manager = AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
         let mut sound_files = vec![
@@ -96,7 +101,11 @@ impl AudioEngine {
 
         log::info!("Loaded {} sounds", sounds.len());
 
-        Self { manager, sounds }
+        Self {
+            manager,
+            sounds,
+            global_volume,
+        }
     }
 
     pub fn _play_sound(&mut self, note: &NoteBlock) {
@@ -104,6 +113,8 @@ impl AudioEngine {
             Some(value) => value,
             None => return,
         };
+
+        let _ = sample.volume(self.global_volume);
 
         // Play the sound with the specified settings
         if let Err(e) = self.manager.play(sample) {
@@ -162,7 +173,7 @@ impl AudioEngine {
         }
 
         // Mix all the sounds together
-        let mixed = Mixer::mix_samples(samples, 44100);
+        let mixed = Mixer::mix_samples(samples, 44100, self.global_volume);
 
         // Play the sound with the specified settings
         if let Err(e) = self.manager.play(mixed) {
