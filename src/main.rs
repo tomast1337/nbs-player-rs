@@ -36,7 +36,6 @@ fn main() {
     let song_name = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
     let title = format!("{} - {}", song_name, song_author);
-    let desired_ticks_per_second = 20.0;
     let notes_per_second = nbs_file.header.tempo as f32 / 100.0;
     let total_duration = nbs_file.header.song_length as f32 / notes_per_second;
 
@@ -78,7 +77,7 @@ fn main() {
         // Show FPS counter
         d.draw_fps(window_width as i32 - 100, 10);
         // Clear background and draw UI
-        d.clear_background(Color::DARKGRAY);
+        d.clear_background(Color::SKYBLUE);
         // Update current tick based on elapsed time and tempo
         current_tick = elapsed_time * notes_per_second;
 

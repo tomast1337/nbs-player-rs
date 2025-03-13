@@ -150,7 +150,10 @@ impl AudioEngine {
         let frequency_ratio = 2.0f64.powf((key as f64 + (pitch as f64 / 100.0) - 45.) / 12.0);
         let playback_rate = PlaybackRate(frequency_ratio);
 
-        let volume: Decibels = Decibels::from(velocity as f32 / 127000.0);
+        let epoch = 1e-6;
+
+        let volume: Decibels =
+            Decibels::from(20.0 * ((velocity as f32 + epoch) / (100.0 + epoch)).log10());
 
         let pan = Panning((panning as f32 / 100.0) - 1.);
 
