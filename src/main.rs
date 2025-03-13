@@ -59,7 +59,7 @@ fn main() {
 
     let note_texture = load_note_texture(&mut rl, &thread);
 
-    let mut audio_engine = audio::AudioEngine::new(None);
+    let mut audio_engine = audio::AudioEngine::new(None, 0.5);
 
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time = 0.0; // Elapsed time in seconds
@@ -67,11 +67,7 @@ fn main() {
     let note_dim = piano_props.white_key_width;
     let key_spacing = piano_props.key_spacing; // Spacing between keys
 
-    let mut played_ticks = vec![];
-    // pre allocate memory for played_ticks
-    for _ in 0..(nbs_file.header.song_length as usize) {
-        played_ticks.push(false);
-    }
+    let mut played_ticks = vec![false; nbs_file.header.song_length as usize];
 
     while !rl.window_should_close() {
         let delta_time = rl.get_frame_time();
@@ -94,7 +90,9 @@ fn main() {
         if let Some(notes) = note_blocks.get((current_tick as f32).floor() as usize) {
             // if tick notes are not played, play them
             if !played_ticks[(current_tick as f32).floor() as usize] {
-                audio_engine.play_tick(notes);
+                //audio_engine.play_tick(notes);
+                notes.iter().for_each(|note| audio_engine._play_sound(note));
+
                 played_ticks[(current_tick as f32).floor() as usize] = true;
             }
         }
