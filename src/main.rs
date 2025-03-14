@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use log;
 use raylib::prelude::*;
 use song::load_nbs_file;
