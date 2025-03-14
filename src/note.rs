@@ -1,22 +1,18 @@
 use std::collections::HashMap;
 
-use nbs_rs;
-use raylib::{
-    color::Color,
-    math::{Rectangle, Vector2},
-    prelude::{RaylibDraw, RaylibDrawHandle},
-    texture::Texture2D,
+use macroquad::{
+    color::{self, Color},
+    math::{Rect, Vec2},
+    text::{TextParams, draw_text_ex, measure_text},
+    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
+use nbs_rs;
 
 use crate::piano;
 
-pub fn load_note_texture(
-    rl: &mut raylib::RaylibHandle,
-    thread: &raylib::RaylibThread,
-) -> raylib::texture::Texture2D {
+pub fn load_note_texture() -> Texture2D {
     let note_image_bytes = include_bytes!("../assets/note_block.png");
-    let note_image = raylib::texture::Image::load_image_from_mem(".png", note_image_bytes).unwrap();
-    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
+    let note_texture = Texture2D::from_file_with_format(note_image_bytes, None);
     note_texture
 }
 
@@ -61,7 +57,7 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
     note_blocks
 }
 
-pub fn generate_instrument_palette() -> HashMap<u8, &'static str> {
+pub fn generate_instrument_palette() -> HashMap<u8, Color> {
     let mut instrument_colors = HashMap::new();
     let instrument_color_palette: [(u8, &str); 16] = [
         (0, "#1964ac"),
@@ -84,7 +80,10 @@ pub fn generate_instrument_palette() -> HashMap<u8, &'static str> {
 
     for (id, color) in instrument_color_palette.iter() {
         // remove the # from the color string
-        let color = &color[1..];
+        let color_str = &color[1..];
+        let hex = u32::from_str_radix(color_str, 16).unwrap();
+        let mut color = Color::from_hex(hex);
+        color.a = 0.90;
         instrument_colors.insert(*id, color);
     }
     instrument_colors
@@ -101,19 +100,11 @@ pub fn draw_notes(
     current_tick: f32,
     note_dim: f32,
     key_spacing: f32,
-    d: &mut RaylibDrawHandle<'_>,
-    instrument_colors: &HashMap<u8, &str>,
+    instrument_colors: &HashMap<u8, Color>,
 ) -> i32 {
     let sliding_window_size = (window_height / note_dim) as i32 + 2;
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
     let window_end_tick = (current_tick as i32) + sliding_window_size;
-
-    let texture_source_rect = Rectangle::new(
-        0.0,
-        0.0,
-        note_texture.width as f32,
-        note_texture.height as f32,
-    );
 
     let base_offset = -window_width / 2.0 + note_dim / 2.0;
     let min_y = 0.0;
@@ -142,7 +133,7 @@ pub fn draw_notes(
 
                     // Check if the note is visible on the screen
                     if y_pos + note_dim > min_y && y_pos < max_y {
-                        let note_rect = Rectangle::new(
+                        let note_rect = Rect::new(
                             x_pos + window_width / 2.0 - note_dim / 2.0,
                             y_pos,
                             note_dim,
@@ -151,27 +142,37 @@ pub fn draw_notes(
 
                         // get note color by the instrument index if larger than the array size, Color::WHITE is used
                         let color = match instrument_colors.get(&note.instrument) {
-                            Some(&color) => Color::from_hex(color),
-                            None => Ok(Color::WHITE),
-                        }
-                        .unwrap();
+                            Some(&color) => color,
+                            None => color::WHITE,
+                        };
 
-                        d.draw_texture_pro(
+                        draw_texture_ex(
                             note_texture,
-                            texture_source_rect,
-                            note_rect,
-                            Vector2::new(0.0, 0.0),
-                            0.0,
+                            note_rect.x,
+                            note_rect.y,
                             color,
+                            DrawTextureParams {
+                                dest_size: Some(Vec2::new(note_rect.w as f32, note_rect.h as f32)),
+                                ..Default::default()
+                            },
                         );
 
                         // Draw the tone (note name) on the note
                         let text = &piano_key.label;
-                        let text_width = d.measure_text(text, 10);
-                        let text_x = note_rect.x + (note_rect.width - text_width as f32) / 2.0;
-                        let text_y = note_rect.y + (note_rect.height - 10.0) / 2.0;
+                        let text_width = measure_text(text, None, 10, 1.);
+                        let text_x = note_rect.x + (note_rect.w - text_width.width as f32) / 2.0;
+                        let text_y = note_rect.y + (note_rect.h - 10.0) / 2.0;
 
-                        d.draw_text(text, text_x as i32, text_y as i32, 10, Color::WHITE);
+                        draw_text_ex(
+                            text,
+                            text_x,
+                            text_y,
+                            TextParams {
+                                font_size: 20,
+                                color: color::WHITE,
+                                ..Default::default()
+                            },
+                        );
 
                         // Increment notes rendered count
                         notes_rendered += 1;

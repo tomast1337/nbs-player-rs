@@ -1,6 +1,11 @@
 use std::collections::HashMap;
 
-use raylib::prelude::*;
+use macroquad::{
+    color,
+    math::Vec2,
+    text::{draw_text, draw_text_ex},
+    texture::{DrawTextureParams, Image, Texture2D, draw_texture_ex, load_texture},
+};
 
 #[derive(Debug)]
 pub struct PianoProps {
@@ -197,7 +202,6 @@ pub fn draw_piano_keys(
     window_height: f32,
     all_keys: &Vec<PianoKey>,
     piano_props: &PianoProps,
-    d: &mut RaylibDrawHandle<'_>,
 ) {
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
@@ -221,7 +225,7 @@ pub fn draw_piano_keys(
                 white_key_width,
                 white_key_height,
                 white_key_texture,
-                Color::BLACK,
+                color::BLACK,
             )
         } else if let Some(white_idx) = key.white_key_index {
             let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
@@ -232,28 +236,30 @@ pub fn draw_piano_keys(
                 black_key_width,
                 black_key_height,
                 black_key_texture,
-                Color::WHITE,
+                color::WHITE,
             )
         } else {
             continue;
         };
 
         // Draw key with texture
-        d.draw_texture_pro(
+        draw_texture_ex(
             texture,
-            Rectangle::new(0.0, 0.0, texture.width as f32, texture.height as f32),
-            Rectangle::new(x_pos, y_pos, width, height),
-            Vector2::new(0.0, 0.0),
-            0.0,
-            Color::WHITE,
+            x_pos,
+            y_pos,
+            color::WHITE,
+            DrawTextureParams {
+                dest_size: Some(Vec2::new(width, height)),
+                ..Default::default()
+            },
         );
 
         // Draw label
-        d.draw_text(
+        draw_text(
             &key.label,
-            (x_pos + width / 2.0 - 5.0) as i32,
-            (y_pos + height - 20.0) as i32,
-            8,
+            x_pos + width / 2.0 - 5.0,
+            y_pos + height - 20.0,
+            20.,
             text_color,
         );
     }
@@ -263,10 +269,8 @@ pub fn initialize_piano_dimensions(
     window_width: f32,
     window_height: f32,
     all_keys: &Vec<PianoKey>,
-    rl: &mut RaylibHandle,
-    thread: &RaylibThread,
 ) -> PianoProps {
-    let (white_key_texture, black_key_texture) = load_piano_key_textures(rl, &thread);
+    let (white_key_texture, black_key_texture) = load_piano_key_textures();
 
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
@@ -292,23 +296,15 @@ pub fn initialize_piano_dimensions(
     }
 }
 
-pub fn load_piano_key_textures(
-    rl: &mut RaylibHandle,
-    thread: &RaylibThread,
-) -> (Texture2D, Texture2D) {
+pub fn load_piano_key_textures() -> (Texture2D, Texture2D) {
     let (key_black_bytes, key_white_bytes) = (
         include_bytes!("../assets/key_black.png"),
         include_bytes!("../assets/key_white.png"),
     );
     let (key_black_image, key_white_image) = (
-        Image::load_image_from_mem(".png", key_black_bytes).unwrap(),
-        Image::load_image_from_mem(".png", key_white_bytes).unwrap(),
+        Texture2D::from_file_with_format(key_black_bytes, None),
+        Texture2D::from_file_with_format(key_white_bytes, None),
     );
 
-    (
-        rl.load_texture_from_image(thread, &key_white_image)
-            .unwrap(),
-        rl.load_texture_from_image(thread, &key_black_image)
-            .unwrap(),
-    )
+    (key_white_image, key_black_image)
 }
