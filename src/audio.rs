@@ -7,51 +7,6 @@ use kira::{
 };
 use std::{collections::HashMap, io::Cursor, vec};
 
-#[derive(Debug, Clone)]
-struct Mixer;
-impl Mixer {
-    fn mix_samples(
-        samples: Vec<StaticSoundData>,
-        sample_rate: u32,
-        global_volume: f32,
-    ) -> StaticSoundData {
-        let max_len = samples.iter().map(|s| s.frames.len()).max().unwrap();
-        let mut final_samples = vec![
-            Frame {
-                left: 0.0,
-                right: 0.0,
-            };
-            max_len
-        ];
-
-        for sample in samples.iter() {
-            sample.frames.iter().enumerate().for_each(|(i, frame)| {
-                final_samples[i].left += frame.left;
-                final_samples[i].right += frame.right;
-            });
-        }
-
-        // apply limiter to prevent clipping
-        let max = final_samples
-            .iter()
-            .map(|frame| frame.left.abs().max(frame.right.abs()))
-            .fold(0.0, f32::max);
-        let limiter = global_volume / max;
-
-        final_samples.iter_mut().for_each(|frame| {
-            frame.left *= limiter;
-            frame.right *= limiter;
-        });
-
-        StaticSoundData {
-            sample_rate,
-            frames: final_samples.into(),
-            settings: StaticSoundSettings::default(),
-            slice: None,
-        }
-    }
-}
-
 pub struct AudioEngine {
     manager: AudioManager<DefaultBackend>,
     sounds: HashMap<u32, StaticSoundData>,

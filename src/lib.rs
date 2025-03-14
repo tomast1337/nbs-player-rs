@@ -1,3 +1,9 @@
+mod audio;
+mod nbs_player;
+mod note;
+mod piano;
+mod song;
+
 pub fn add(left: u64, right: u64) -> u64 {
     left + right
 }
