@@ -75,36 +75,22 @@ fn main() {
 
     let mut played_ticks = vec![false; nbs_file.header.song_length as usize];
 
-    let mut instrument_colors = HashMap::new();
-    let instrument_color_palette: [(u8, &str); 16] = [
-        (0, "#1964ac"),
-        (1, "#3c8e48"),
-        (2, "#be6b6b"),
-        (3, "#bebe19"),
-        (4, "#9d5a98"),
-        (5, "#572b21"),
-        (6, "#bec65c"),
-        (7, "#be19be"),
-        (8, "#52908d"),
-        (9, "#bebebe"),
-        (10, "#1991be"),
-        (11, "#be2328"),
-        (12, "#be5728"),
-        (13, "#19be19"),
-        (14, "#be1957"),
-        (15, "#575757"),
-    ];
+    let instrument_colors = note::generate_instrument_palette();
 
-    for (id, color) in instrument_color_palette.iter() {
-        // remove the # from the color string
-        let color = &color[1..];
-        instrument_colors.insert(*id, color);
-    }
+    let mut is_paused = true;
 
     while !rl.window_should_close() {
         let delta_time = rl.get_frame_time();
         let mut d = rl.begin_drawing(&thread);
-        elapsed_time += delta_time;
+
+        if d.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            is_paused = !is_paused;
+        }
+
+        // Update elapsed time if not paused ad song is not finished
+        if !is_paused && elapsed_time < total_duration {
+            elapsed_time += delta_time;
+        }
 
         // Show FPS counter
         d.draw_fps(window_width as i32 - 100, 10);
@@ -172,5 +158,16 @@ fn main() {
         d.draw_text(&duration, 2, 12, 10, Color::BLACK);
         d.draw_text(&notes_redered, 2, 24, 10, Color::BLACK);
         d.draw_text(&current_tick, 2, 36, 10, Color::BLACK);
+
+        // Draw pause state
+        if is_paused {
+            d.draw_text(
+                "PAUSED",
+                window_width as i32 / 2 - 40,
+                window_height as i32 / 2 - 20,
+                40,
+                Color::RED,
+            );
+        }
     }
 }

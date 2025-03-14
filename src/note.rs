@@ -20,6 +20,76 @@ pub fn load_note_texture(
     note_texture
 }
 
+#[derive(Clone, Debug)]
+pub struct NoteBlock {
+    pub was_played: bool,
+    pub tick: u16,
+    pub layer: u16,
+    pub instrument: u8,
+    pub key: u8,
+    pub velocity: u8,
+    pub panning: i8,
+    pub pitch: i16,
+}
+
+pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
+    // Pre allocate the ticks so it doesn't have to resize the on each iteration
+    let mut note_blocks: Vec<Vec<NoteBlock>> = vec![Vec::new(); song.header.song_length as usize];
+
+    for note in &song.notes {
+        let tick = note.tick as usize;
+        if tick < note_blocks.len() {
+            note_blocks[tick].push(NoteBlock {
+                was_played: false,
+                tick: note.tick,
+                layer: note.layer,
+                instrument: note.instrument,
+                key: note.key,
+                velocity: note.velocity,
+                panning: note.panning,
+                pitch: note.pitch,
+            });
+        }
+    }
+
+    if !note_blocks.iter().all(Vec::is_empty) {
+        log::info!("Loaded note blocks");
+    } else {
+        log::warn!("No note blocks loaded");
+    }
+
+    note_blocks
+}
+
+pub fn generate_instrument_palette() -> HashMap<u8, &'static str> {
+    let mut instrument_colors = HashMap::new();
+    let instrument_color_palette: [(u8, &str); 16] = [
+        (0, "#1964ac"),
+        (1, "#3c8e48"),
+        (2, "#be6b6b"),
+        (3, "#bebe19"),
+        (4, "#9d5a98"),
+        (5, "#572b21"),
+        (6, "#bec65c"),
+        (7, "#be19be"),
+        (8, "#52908d"),
+        (9, "#bebebe"),
+        (10, "#1991be"),
+        (11, "#be2328"),
+        (12, "#be5728"),
+        (13, "#19be19"),
+        (14, "#be1957"),
+        (15, "#575757"),
+    ];
+
+    for (id, color) in instrument_color_palette.iter() {
+        // remove the # from the color string
+        let color = &color[1..];
+        instrument_colors.insert(*id, color);
+    }
+    instrument_colors
+}
+
 pub fn draw_notes(
     window_width: f32,
     window_height: f32,
@@ -111,45 +181,4 @@ pub fn draw_notes(
         }
     }
     notes_rendered
-}
-
-#[derive(Clone, Debug)]
-pub struct NoteBlock {
-    pub was_played: bool,
-    pub tick: u16,
-    pub layer: u16,
-    pub instrument: u8,
-    pub key: u8,
-    pub velocity: u8,
-    pub panning: i8,
-    pub pitch: i16,
-}
-
-pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
-    // Pre allocate the ticks so it doesn't have to resize the on each iteration
-    let mut note_blocks: Vec<Vec<NoteBlock>> = vec![Vec::new(); song.header.song_length as usize];
-
-    for note in &song.notes {
-        let tick = note.tick as usize;
-        if tick < note_blocks.len() {
-            note_blocks[tick].push(NoteBlock {
-                was_played: false,
-                tick: note.tick,
-                layer: note.layer,
-                instrument: note.instrument,
-                key: note.key,
-                velocity: note.velocity,
-                panning: note.panning,
-                pitch: note.pitch,
-            });
-        }
-    }
-
-    if !note_blocks.iter().all(Vec::is_empty) {
-        log::info!("Loaded note blocks");
-    } else {
-        log::warn!("No note blocks loaded");
-    }
-
-    note_blocks
 }
