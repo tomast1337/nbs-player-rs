@@ -5,6 +5,7 @@ use kira::{
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
     track::{TrackBuilder, TrackHandle},
 };
+
 use std::{collections::HashMap, io::Cursor, vec};
 
 pub struct AudioEngine {
