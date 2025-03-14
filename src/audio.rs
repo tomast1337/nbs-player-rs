@@ -71,22 +71,22 @@ impl AudioEngine {
             AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
         let mut sound_files = vec![
-            include_bytes!("../assets/bass.ogg") as &[u8],
-            include_bytes!("../assets/bd.ogg") as &[u8],
-            include_bytes!("../assets/harp.ogg") as &[u8],
-            include_bytes!("../assets/snare.ogg") as &[u8],
-            include_bytes!("../assets/hat.ogg") as &[u8],
-            include_bytes!("../assets/guitar.ogg") as &[u8],
-            include_bytes!("../assets/flute.ogg") as &[u8],
-            include_bytes!("../assets/bell.ogg") as &[u8],
-            include_bytes!("../assets/icechime.ogg") as &[u8],
-            include_bytes!("../assets/xylobone.ogg") as &[u8],
-            include_bytes!("../assets/iron_xylophone.ogg") as &[u8],
-            include_bytes!("../assets/cow_bell.ogg") as &[u8],
-            include_bytes!("../assets/didgeridoo.ogg") as &[u8],
-            include_bytes!("../assets/bit.ogg") as &[u8],
-            include_bytes!("../assets/banjo.ogg") as &[u8],
-            include_bytes!("../assets/pling.ogg") as &[u8],
+            include_bytes!("../assets/harp.ogg") as &[u8], //0 = Piano (Air)
+            include_bytes!("../assets/bass.ogg") as &[u8], //1 = Double Bass (Wood)
+            include_bytes!("../assets/bd.ogg") as &[u8],   //2 = Bass Drum (Stone)
+            include_bytes!("../assets/snare.ogg") as &[u8], //3 = Snare Drum (Sand)
+            include_bytes!("../assets/hat.ogg") as &[u8],  //4 = Click (Glass)
+            include_bytes!("../assets/guitar.ogg") as &[u8], //5 = Guitar (Wool)
+            include_bytes!("../assets/flute.ogg") as &[u8], //6 = Flute (Clay)
+            include_bytes!("../assets/bell.ogg") as &[u8], //7 = Bell (Block of Gold)
+            include_bytes!("../assets/icechime.ogg") as &[u8], //8 = Chime (Packed Ice)
+            include_bytes!("../assets/xylobone.ogg") as &[u8], //9 = Xylophone (Bone Block)
+            include_bytes!("../assets/iron_xylophone.ogg") as &[u8], //10 = Iron Xylophone (Iron Block)
+            include_bytes!("../assets/cow_bell.ogg") as &[u8],       //11 = Cow Bell (Soul Sand)
+            include_bytes!("../assets/didgeridoo.ogg") as &[u8],     //12 = Didgeridoo (Pumpkin)
+            include_bytes!("../assets/bit.ogg") as &[u8],            //13 = Bit (Block of Emerald)
+            include_bytes!("../assets/banjo.ogg") as &[u8],          //14 = Banjo (Hay)
+            include_bytes!("../assets/pling.ogg") as &[u8],          //15 = Pling (Glowstone)
         ];
 
         if let Some(extra_sounds) = extra_sounds {
@@ -113,26 +113,12 @@ impl AudioEngine {
         }
     }
 
-    pub fn _play_sound(&mut self, note: &NoteBlock) {
-        let sample = match self.get_sound_data(note) {
-            Some(value) => value,
-            None => return,
-        };
-
-        let _ = sample.volume(self.global_volume);
-
-        // Play the sound with the specified settings
-        if let Err(e) = self.main_track.play(sample.clone()) {
-            log::error!("Failed to play sound: {}", e);
-        }
-    }
-
     fn get_sound_data(&mut self, note: &NoteBlock) -> Option<StaticSoundData> {
         let sound_id = note.instrument as u32;
-        let key = note.key;
-        let velocity = note.velocity;
-        let panning = note.panning;
-        let pitch = note.pitch;
+        let key = note.key as f64;
+        let velocity = note.velocity as f32;
+        let panning = note.panning as f32;
+        let pitch = note.pitch as f64;
         let sound_data = match self.sounds.get(&sound_id) {
             Some(data) => data,
             None => {
@@ -147,15 +133,16 @@ impl AudioEngine {
             slice: None,
         };
 
-        let frequency_ratio = 2.0f64.powf((key as f64 + (pitch as f64 / 100.0) - 45.) / 12.0);
+        let frequency_ratio = 2.0f64.powf((key + (pitch / 100.0) - 45.) / 12.0);
         let playback_rate = PlaybackRate(frequency_ratio);
 
         let epoch = 1e-6;
 
-        let volume: Decibels =
-            Decibels::from(20.0 * ((velocity as f32 + epoch) / (100.0 + epoch)).log10());
+        let volume: Decibels = Decibels::from(
+            10.0 * ((velocity * self.global_volume + epoch) / (100.0 + epoch)).log10(),
+        );
 
-        let pan = Panning((panning as f32 / 100.0) - 1.);
+        let pan = Panning((panning / 100.0) - 1.);
 
         let settings = StaticSoundSettings::default()
             .volume(volume)
