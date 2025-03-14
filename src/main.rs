@@ -3,6 +3,7 @@ use raylib::prelude::*;
 use song::load_nbs_file;
 
 mod audio;
+mod nbs_player;
 mod note;
 mod piano;
 mod song;
@@ -28,32 +29,33 @@ fn time_formatter(time: f32) -> String {
 
 fn main() {
     colog::init();
-    let window_width: f32 = 1280.;
+    let window_width = 1280.;
     let window_height = 720.;
 
-    let nbs_file = load_nbs_file(None);
+    let nbs_file: nbs_rs::NbsFile = load_nbs_file(None);
 
     if nbs_file.instruments.len() == 0 {
         log::warn!("No extra sounds loaded");
     }
 
-    let song_name = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
-    let song_author = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
-    let title = format!("{} - {}", song_name, song_author);
-    let notes_per_second = nbs_file.header.tempo as f32 / 100.0;
-    let total_duration = nbs_file.header.song_length as f32 / notes_per_second;
+    let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
+    let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
+    let title: String = format!("{} - {}", song_name, song_author);
+    let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
+    let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
-    let (mut rl, thread) = raylib::init()
+    let (mut rl, thread): (RaylibHandle, RaylibThread) = raylib::init()
         .size(window_width as i32, window_height as i32)
         .title(title.as_str())
         .build();
 
     rl.set_trace_log_callback(logger_callback).unwrap();
 
-    let (mut all_keys, key_map) = piano::generate_piano_keys();
-    let mut note_blocks = note::get_note_blocks(&nbs_file);
+    let (mut all_keys, key_map): (Vec<piano::PianoKey>, std::collections::HashMap<u8, usize>) =
+        piano::generate_piano_keys();
+    let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
 
-    let piano_props = piano::initialize_piano_dimensions(
+    let piano_props: piano::PianoProps = piano::initialize_piano_dimensions(
         window_width,
         window_height,
         &all_keys,
@@ -61,21 +63,22 @@ fn main() {
         &thread,
     );
 
-    let note_texture = note::load_note_texture(&mut rl, &thread);
+    let note_texture: Texture2D = note::load_note_texture(&mut rl, &thread);
 
-    let mut audio_engine = audio::AudioEngine::new(None, 0.5);
+    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(None, 0.5);
 
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
-    let mut elapsed_time = 0.0; // Elapsed time in seconds
+    let mut elapsed_time: f32 = 0.; // Elapsed time in seconds
 
-    let note_dim = piano_props.white_key_width;
-    let key_spacing = piano_props.key_spacing; // Spacing between keys
+    let note_dim: f32 = piano_props.white_key_width;
+    let key_spacing: f32 = piano_props.key_spacing; // Spacing between keys
 
-    let mut played_ticks = vec![false; nbs_file.header.song_length as usize];
+    let mut played_ticks: Vec<bool> = vec![false; nbs_file.header.song_length as usize];
 
-    let instrument_colors = note::generate_instrument_palette();
+    let instrument_colors: std::collections::HashMap<u8, &str> =
+        note::generate_instrument_palette();
 
-    let mut is_paused = true;
+    let mut is_paused: bool = true;
 
     while !rl.window_should_close() {
         let delta_time = rl.get_frame_time();
