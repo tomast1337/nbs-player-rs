@@ -77,26 +77,28 @@ fn main() {
 
     let mut instrument_colors = HashMap::new();
     let instrument_color_palette: [(u8, &str); 16] = [
-        (0, "1964ac"),
-        (1, "3c8e48"),
-        (2, "be6b6b"),
-        (3, "bebe19"),
-        (4, "9d5a98"),
-        (5, "572b21"),
-        (6, "bec65c"),
-        (7, "be19be"),
-        (8, "52908d"),
-        (9, "bebebe"),
-        (10, "1991be"),
-        (11, "be2328"),
-        (12, "be5728"),
-        (13, "19be19"),
-        (14, "be1957"),
-        (15, "575757"),
+        (0, "#1964ac"),
+        (1, "#3c8e48"),
+        (2, "#be6b6b"),
+        (3, "#bebe19"),
+        (4, "#9d5a98"),
+        (5, "#572b21"),
+        (6, "#bec65c"),
+        (7, "#be19be"),
+        (8, "#52908d"),
+        (9, "#bebebe"),
+        (10, "#1991be"),
+        (11, "#be2328"),
+        (12, "#be5728"),
+        (13, "#19be19"),
+        (14, "#be1957"),
+        (15, "#575757"),
     ];
 
     for (id, color) in instrument_color_palette.iter() {
-        instrument_colors.insert(*id, *color);
+        // remove the # from the color string
+        let color = &color[1..];
+        instrument_colors.insert(*id, color);
     }
 
     while !rl.window_should_close() {
