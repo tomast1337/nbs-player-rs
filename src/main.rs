@@ -95,7 +95,7 @@ fn main() {
         (15, "575757"),
     ];
 
-    for (i, (id, color)) in instrument_color_palette.iter().enumerate() {
+    for (id, color) in instrument_color_palette.iter() {
         instrument_colors.insert(*id, *color);
     }
 
