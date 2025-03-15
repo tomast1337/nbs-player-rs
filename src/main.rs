@@ -3,7 +3,7 @@ use macroquad::{
     input::{KeyCode, is_key_pressed},
     text::draw_text,
     time::{get_fps, get_frame_time},
-    window::{self, clear_background},
+    window::{self, clear_background, request_new_screen_size},
 };
 
 mod audio;
@@ -22,6 +22,8 @@ async fn main() {
     colog::init();
     let mut window_width = 1280.;
     let mut window_height = 720.;
+
+    request_new_screen_size(window_width, window_height);
 
     let nbs_file: nbs_rs::NbsFile = song::load_nbs_file(None);
 
