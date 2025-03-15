@@ -19,7 +19,6 @@ fn time_formatter(time: f32) -> String {
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
-    colog::init();
     let mut window_width = 1280.;
     let mut window_height = 720.;
 
