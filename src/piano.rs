@@ -275,11 +275,11 @@ pub fn initialize_piano_dimensions(
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
     let key_size_relative_to_screen = 0.1;
-    let black_key_width_ratio = 1.;
+    let black_key_width_ratio = 0.8;
     let black_key_height_ratio = 0.6;
 
     // Spacing between keys
-    let key_spacing = 1.;
+    let key_spacing = 0.0;
 
     let white_key_width = (window_width / num_white_keys) - key_spacing;
     let white_key_height = window_height * key_size_relative_to_screen;
