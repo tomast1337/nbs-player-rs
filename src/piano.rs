@@ -334,5 +334,8 @@ pub fn load_piano_key_textures() -> (Texture2D, Texture2D) {
         Texture2D::from_file_with_format(key_white_bytes, None),
     );
 
+    key_black_image.set_filter(macroquad::texture::FilterMode::Nearest);
+    key_white_image.set_filter(macroquad::texture::FilterMode::Nearest);
+
     (key_white_image, key_black_image)
 }

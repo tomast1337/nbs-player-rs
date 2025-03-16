@@ -50,6 +50,7 @@ async fn main() {
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
 
     let note_texture = note::load_note_texture();
+    note_texture.set_filter(macroquad::texture::FilterMode::Nearest);
 
     let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
@@ -66,7 +67,8 @@ async fn main() {
     let mut is_paused: bool = true;
 
     let font_data = include_bytes!("../assets/fonts/Monocraft.ttf");
-    let font = load_ttf_font_from_bytes(font_data).unwrap();
+    let mut font = load_ttf_font_from_bytes(font_data).unwrap();
+    font.set_filter(macroquad::texture::FilterMode::Nearest);
     FONT.set(font.clone()).unwrap();
 
     loop {
@@ -137,7 +139,7 @@ async fn main() {
 
         // Calculate font size based on screen width with min and max limits
         let min_font_size = 20;
-        let max_font_size = 30;
+        let max_font_size = 40;
         let font_size =
             (window_width / 64.0).clamp(min_font_size as f32, max_font_size as f32) as u16;
 
