@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use macroquad::{
     color,
     math::Vec2,
-    text::{draw_text, draw_text_ex},
-    texture::{DrawTextureParams, Image, Texture2D, draw_texture_ex, load_texture},
+    text::{TextParams, draw_text_ex, measure_text},
+    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
 
 #[derive(Debug)]
@@ -261,13 +261,34 @@ pub fn draw_piano_keys(
             },
         );
 
+        let font = crate::FONT.get().unwrap();
+
+        // Calculate font size to fit within the key
+        let max_font_size = 18; // Maximum font size
+        let min_font_size = 8; // Minimum font size
+        let mut font_size = max_font_size;
+
+        // Measure text width and adjust font size if necessary
+        let mut text_width = measure_text(&key.label, Some(&font), font_size, 1.0).width;
+        while text_width > width - 5. && font_size > min_font_size {
+            font_size -= 1;
+            text_width = measure_text(&key.label, Some(&font), font_size, 1.0).width;
+        }
+
+        // Center text horizontally within the key
+        let text_x = x_pos + (width - text_width) / 2.0;
+
         // Draw label
-        draw_text(
+        draw_text_ex(
             &key.label,
-            x_pos + width / 2.0 - 5.0,
-            y_pos + height - 20.0,
-            20.,
-            text_color,
+            text_x,
+            y_pos + height - height * 0.25,
+            TextParams {
+                font: Some(&font.clone()),
+                font_size,
+                color: text_color,
+                ..Default::default()
+            },
         );
     }
 }
