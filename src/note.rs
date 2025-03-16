@@ -53,6 +53,29 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
     note_blocks
 }
 
+fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (u8, u8, u8) {
+    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
+    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
+    let m = l - c / 2.0;
+
+    let (r, g, b) = match h {
+        h if h < 60.0 => (c, x, 0.0),
+        h if h < 120.0 => (x, c, 0.0),
+        h if h < 180.0 => (0.0, c, x),
+        h if h < 240.0 => (0.0, x, c),
+        h if h < 300.0 => (x, 0.0, c),
+        _ => (c, 0.0, x),
+    };
+
+    let (r, g, b) = (
+        ((r + m) * 255.0).round() as u8,
+        ((g + m) * 255.0).round() as u8,
+        ((b + m) * 255.0).round() as u8,
+    );
+
+    (r, g, b)
+}
+
 pub fn generate_instrument_palette() -> HashMap<u8, Color> {
     let mut instrument_colors = HashMap::new();
 
@@ -88,22 +111,13 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
 
     // add 100 more colors to the palette following hue wheel
     for i in 0..100 {
-        let h = i as f64 * 3.6;
+        let h = i as f64 * 3.6; // Spread colors evenly on the hue wheel
         let s = 1.0;
         let l = 0.5;
 
-        // convert HSL to RGB
-        let r = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
-            as u8;
-        let g = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
-            as u8;
-        let b = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
-            as u8;
+        let (r, g, b) = hsl_to_rgb(h, s, l);
 
-        let color_hex = format!("{:02x}{:02x}{:02x}", r, g, b);
-        let hex = u32::from_str_radix(&color_hex, 16).unwrap();
-        let mut color = Color::from_hex(hex);
-        color.a = 0.90;
+        let color = Color::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 0.90);
 
         instrument_colors.insert((i + initial_palette_size) as u8, color);
     }
