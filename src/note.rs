@@ -199,7 +199,7 @@ pub fn draw_notes(
                             measure_text(text, Some(&font), font_size, 1.0).height;
 
                         // Adjust font size if the text is too large
-                        while (text_width > note_rect.w || text_height > note_rect.h)
+                        while (text_width > note_rect.w - 5. || text_height > note_rect.h - 5.)
                             && font_size > min_font_size
                         {
                             font_size -= 1;
