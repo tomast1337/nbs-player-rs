@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use macroquad::{
     color,
     math::Vec2,
+    shapes::draw_rectangle,
     text::{TextParams, draw_text_ex, measure_text},
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
@@ -170,11 +171,11 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 }
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 500000.; // Press force
+    const PRESS_FORCE: f32 = 50000000.; // Press force
     const DAMPING: f32 = 20.; // Damping factor
     const SPRING_CONSTANT: f32 = 700.; // Spring constant
-    const MAX_OFFSET: f32 = 5.0; // Maximum offset
-    const MIN_OFFSET: f32 = -5.0; // Minimum offset
+    const MAX_OFFSET: f32 = 10.0; // Maximum offset
+    const MIN_OFFSET: f32 = -10.0; // Minimum offset
 
     for key in keys.iter_mut() {
         if key.is_pressed {
@@ -220,6 +221,15 @@ pub fn draw_piano_keys(
 
     let total_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
     let total_width = total_white_keys * (white_key_width + key_spacing) - key_spacing;
+
+    // draw a background for the piano
+    draw_rectangle(
+        (window_width - total_width) / 2.0,
+        window_height - white_key_height,
+        total_width,
+        white_key_height,
+        color::BLACK,
+    );
 
     for (i, key) in all_keys.iter().enumerate() {
         let (x_pos, y_pos, width, height, texture, text_color) = if key.is_white {
