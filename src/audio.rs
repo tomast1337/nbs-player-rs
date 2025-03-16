@@ -8,7 +8,7 @@ use kira::{
 use std::{collections::HashMap, io::Cursor, vec};
 
 pub struct AudioEngine {
-    manager: AudioManager<DefaultBackend>,
+    _manager: AudioManager<DefaultBackend>,
     sounds: HashMap<u32, (StaticSoundData, f64)>,
     global_volume: f32,
     main_track: TrackHandle,
@@ -64,7 +64,7 @@ impl AudioEngine {
 
         Self {
             main_track,
-            manager,
+            _manager: manager,
             sounds,
             global_volume,
         }
