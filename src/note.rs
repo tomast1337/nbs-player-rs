@@ -164,12 +164,16 @@ pub fn draw_notes(
                             note_dim,
                         );
 
-                        // get note color by the instrument index if larger than the array size, Color::WHITE is used
-                        let color = match instrument_colors.get(&note.instrument) {
+                        // Get note color by the instrument index
+                        let mut color = match instrument_colors.get(&note.instrument) {
                             Some(&color) => color,
                             None => color::WHITE,
-                        };
+                        }
+                        .clone();
 
+                        color.a = 0.90;
+
+                        // Draw the note texture
                         draw_texture_ex(
                             note_texture,
                             note_rect.x,
@@ -183,17 +187,38 @@ pub fn draw_notes(
 
                         // Draw the tone (note name) on the note
                         let text = &piano_key.label;
-                        let text_width = measure_text(text, None, 10, 1.);
-                        let text_x = note_rect.x + (note_rect.w - text_width.width as f32) / 2.0;
-                        let text_y = note_rect.y + (note_rect.h - 10.0) / 2.0;
 
+                        // Calculate font size to fit within the note block
+                        let max_font_size = 20; // Maximum font size
+                        let min_font_size = 8; // Minimum font size
+                        let mut font_size = max_font_size;
+
+                        // Measure text width and height
+                        let mut text_width = measure_text(text, Some(&font), font_size, 1.0).width;
+                        let mut text_height =
+                            measure_text(text, Some(&font), font_size, 1.0).height;
+
+                        // Adjust font size if the text is too large
+                        while (text_width > note_rect.w || text_height > note_rect.h)
+                            && font_size > min_font_size
+                        {
+                            font_size -= 1;
+                            text_width = measure_text(text, Some(&font), font_size, 1.0).width;
+                            text_height = measure_text(text, Some(&font), font_size, 1.0).height;
+                        }
+
+                        // Center text horizontally and vertically within the note block
+                        let text_x = note_rect.x + (note_rect.w - text_width) / 2.0;
+                        let text_y = note_rect.y + (note_rect.h) / 2.0;
+
+                        // Draw the text
                         draw_text_ex(
                             text,
                             text_x,
                             text_y,
                             TextParams {
                                 font: Some(&font),
-                                font_size: 20,
+                                font_size,
                                 color: color::WHITE,
                                 ..Default::default()
                             },
