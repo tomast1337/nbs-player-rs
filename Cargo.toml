@@ -13,6 +13,7 @@ web-sys = { version = "0.3.77", features = ["Window", "Document", "Element", "Au
 log = "0.4.26"
 kira = "0.10.4"
 macroquad = "0.4.13"
+zip = "2.2.3"
 
 
 [lib]

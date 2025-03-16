@@ -11,7 +11,7 @@ use nbs_rs;
 use crate::piano;
 
 pub fn load_note_texture() -> Texture2D {
-    let note_image_bytes = include_bytes!("../assets/note_block.png");
+    let note_image_bytes = include_bytes!("../assets/textures/note_block.png");
     let note_texture = Texture2D::from_file_with_format(note_image_bytes, None);
     note_texture
 }

@@ -1,7 +1,7 @@
 use macroquad::{
     self, color,
     input::{KeyCode, is_key_pressed},
-    text::draw_text,
+    text::{Font, draw_text},
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
 };
@@ -24,14 +24,15 @@ async fn main() {
 
     request_new_screen_size(window_width, window_height);
 
-    let nbs_file: nbs_rs::NbsFile = song::load_nbs_file(None);
+    let nbs_data = song::load_nbs_file(None);
 
-    if nbs_file.instruments.len() == 0 {
-        log::warn!("No extra sounds loaded");
-    }
+    let nbs_file = nbs_data.song;
+    let extra_sounds = nbs_data.extra_sounds;
 
-    if nbs_file.instruments.len() == 0 {
+    if extra_sounds.len() == 0 {
         log::warn!("No extra sounds loaded");
+    } else {
+        println!("{:?}", nbs_file.instruments);
     }
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
@@ -47,7 +48,7 @@ async fn main() {
 
     let note_texture = note::load_note_texture();
 
-    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(None, 0.5);
+    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time: f32 = 0.; // Elapsed time in seconds
@@ -60,6 +61,10 @@ async fn main() {
     let instrument_colors = note::generate_instrument_palette();
 
     let mut is_paused: bool = true;
+
+    //let font = include_bytes!("../assets/Monocraft.ttf");
+
+    //let font = Font::
 
     loop {
         window_width = window::screen_width();
@@ -136,7 +141,7 @@ async fn main() {
         let notes_rendered_text = format!("Notes Rendered: {}", notes_rendered);
         let duration_text = format!(
             "Duration: {}|{}",
-            time_formatter(total_duration), //time_formatter(elapsed_time),
+            time_formatter(elapsed_time),
             time_formatter(total_duration)
         );
 
