@@ -2,7 +2,7 @@ use std::sync::OnceLock;
 
 use macroquad::{
     self, color,
-    input::{KeyCode, is_key_pressed},
+    input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
     text::{Font, TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
@@ -80,7 +80,7 @@ async fn main() {
 
         let delta_time = get_frame_time();
 
-        if is_key_pressed(KeyCode::Space) {
+        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
             is_paused = !is_paused;
         }
 
