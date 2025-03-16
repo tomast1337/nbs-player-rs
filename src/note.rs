@@ -19,8 +19,6 @@ pub fn load_note_texture() -> Texture2D {
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
     pub was_played: bool,
-    pub tick: u16,
-    pub layer: u16,
     pub instrument: u8,
     pub key: u8,
     pub velocity: u8,
@@ -37,8 +35,6 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
         if tick < note_blocks.len() {
             note_blocks[tick].push(NoteBlock {
                 was_played: false,
-                tick: note.tick,
-                layer: note.layer,
                 instrument: note.instrument,
                 key: note.key,
                 velocity: note.velocity,
