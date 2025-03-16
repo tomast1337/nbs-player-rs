@@ -128,8 +128,8 @@ pub fn draw_notes(
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
     let window_end_tick = (current_tick as i32) + sliding_window_size;
 
-    let base_offset = -window_width / 2.0 + note_dim / 2.0;
-    let min_y = 0.0;
+    let base_offset = -window_width / 2. + note_dim / 2.;
+    let min_y = 0.;
     let max_y = window_height - piano_props.white_key_height;
 
     // Count notes being rendered
