@@ -1,7 +1,7 @@
 use macroquad::{
     self, color,
     input::{KeyCode, is_key_pressed},
-    text::{Font, draw_text},
+    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
 };
@@ -62,9 +62,8 @@ async fn main() {
 
     let mut is_paused: bool = true;
 
-    //let font = include_bytes!("../assets/Monocraft.ttf");
-
-    //let font = Font::
+    let font_data = include_bytes!("../assets/fonts/Monocraft.ttf");
+    let font = load_ttf_font_from_bytes(font_data).unwrap();
 
     loop {
         window_width = window::screen_width();
@@ -132,8 +131,19 @@ async fn main() {
         piano::update_key_animation(&mut all_keys, delta_time);
         piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props);
 
-        // Calculate font size based on screen width
-        let font_size = window_width / 64.0;
+        // Calculate font size based on screen width with min and max limits
+        let min_font_size = 20;
+        let max_font_size = 30;
+        let font_size =
+            (window_width / 64.0).clamp(min_font_size as f32, max_font_size as f32) as u16;
+
+        // Define text positions
+        let start_x = 10.0;
+        let mut start_y = 30.0;
+        let line_height = 20.0; // Space between lines
+
+        // Define text color
+        let text_color = color::BLACK;
 
         // Draw song status
         let fps = get_fps();
@@ -145,26 +155,60 @@ async fn main() {
             time_formatter(total_duration)
         );
 
-        draw_text(&title, 10., 15., font_size, color::BLACK);
-        draw_text(&duration_text, 10., 35., font_size, color::BLACK);
-        draw_text(&notes_rendered_text, 10., 55., font_size, color::BLACK);
-
-        draw_text(&current_tick_text, 10., 75., font_size, color::BLACK);
-        draw_text(
-            &format!("FPS: {:.2}", fps),
-            window_width - 100.,
+        let text_parameters = TextParams {
             font_size,
-            20.,
-            color::BLACK,
+            font: Some(&font),
+            color: text_color,
+            font_scale: 0.5,
+            ..Default::default()
+        };
+
+        // Draw title
+        draw_text_ex(&title, start_x, start_y, text_parameters.clone());
+
+        // Draw duration
+        start_y += line_height;
+        draw_text_ex(&duration_text, start_x, start_y, text_parameters.clone());
+
+        // Draw notes rendered
+        start_y += line_height;
+        draw_text_ex(
+            &notes_rendered_text,
+            start_x,
+            start_y,
+            text_parameters.clone(),
+        );
+
+        // Draw current tick
+        start_y += line_height;
+        draw_text_ex(
+            &current_tick_text,
+            start_x,
+            start_y,
+            text_parameters.clone(),
+        );
+
+        // Draw FPS in the top-right corner
+        let fps_text = format!("FPS: {:.2}", fps);
+        let fps_text_width = measure_text(&fps_text, Some(&font), font_size, 1.0).width;
+        draw_text_ex(
+            &fps_text,
+            window_width - fps_text_width - 10.0, // 10.0 padding from the right edge
+            15.0,
+            text_parameters.clone(),
         );
         // Draw pause state
         if is_paused {
-            draw_text(
+            draw_text_ex(
                 "Paused",
                 window_width / 2. - 50.,
                 window_height / 2.,
-                font_size * 2.5,
-                color::RED,
+                TextParams {
+                    font_size: 40,
+                    font: Some(&font),
+                    color: color::RED,
+                    ..Default::default()
+                },
             );
         }
 
