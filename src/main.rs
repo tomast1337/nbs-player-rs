@@ -1,7 +1,9 @@
+use std::sync::OnceLock;
+
 use macroquad::{
     self, color,
     input::{KeyCode, is_key_pressed},
-    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
+    text::{Font, TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
 };
@@ -17,6 +19,7 @@ fn time_formatter(time: f32) -> String {
     format!("{:0>2}:{:0>2}", minutes, seconds)
 }
 
+pub static FONT: OnceLock<Font> = OnceLock::new();
 #[macroquad::main("BasicShapes")]
 async fn main() {
     let mut window_width = 1280.;
@@ -64,6 +67,7 @@ async fn main() {
 
     let font_data = include_bytes!("../assets/fonts/Monocraft.ttf");
     let font = load_ttf_font_from_bytes(font_data).unwrap();
+    FONT.set(font.clone()).unwrap();
 
     loop {
         window_width = window::screen_width();
