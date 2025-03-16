@@ -55,7 +55,8 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
 
 pub fn generate_instrument_palette() -> HashMap<u8, Color> {
     let mut instrument_colors = HashMap::new();
-    let instrument_color_palette: [(u8, &str); 16] = [
+
+    let instrument_color_palette = vec![
         (0, "#1964ac"),
         (1, "#3c8e48"),
         (2, "#be6b6b"),
@@ -82,6 +83,31 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
         color.a = 0.90;
         instrument_colors.insert(*id, color);
     }
+
+    let initial_palette_size = instrument_colors.len();
+
+    // add 100 more colors to the palette following hue wheel
+    for i in 0..100 {
+        let h = i as f64 * 3.6;
+        let s = 1.0;
+        let l = 0.5;
+
+        // convert HSL to RGB
+        let r = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
+            as u8;
+        let g = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
+            as u8;
+        let b = (l * 255.0 + s * 255.0 * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs() - 1.0) / 2.0).round()
+            as u8;
+
+        let color_hex = format!("{:02x}{:02x}{:02x}", r, g, b);
+        let hex = u32::from_str_radix(&color_hex, 16).unwrap();
+        let mut color = Color::from_hex(hex);
+        color.a = 0.90;
+
+        instrument_colors.insert((i + initial_palette_size) as u8, color);
+    }
+
     instrument_colors
 }
 
@@ -108,6 +134,8 @@ pub fn draw_notes(
 
     // Count notes being rendered
     let mut notes_rendered = 0;
+
+    let font = crate::FONT.get().unwrap();
 
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;
@@ -164,6 +192,7 @@ pub fn draw_notes(
                             text_x,
                             text_y,
                             TextParams {
+                                font: Some(&font),
                                 font_size: 20,
                                 color: color::WHITE,
                                 ..Default::default()
