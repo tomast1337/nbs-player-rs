@@ -1,7 +1,6 @@
 use crate::note::NoteBlock;
 use kira::{
-    self, AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Frame, Mix, Panning,
-    PlaybackRate,
+    self, AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Panning, PlaybackRate,
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
     track::{TrackBuilder, TrackHandle},
 };
@@ -10,7 +9,7 @@ use std::{collections::HashMap, io::Cursor, vec};
 
 pub struct AudioEngine {
     manager: AudioManager<DefaultBackend>,
-    sounds: HashMap<u32, StaticSoundData>,
+    sounds: HashMap<u32, (StaticSoundData, f64)>,
     global_volume: f32,
     main_track: TrackHandle,
 }
@@ -22,28 +21,30 @@ impl AudioEngine {
         sound_data
     }
 
-    pub fn new(extra_sounds: Option<Vec<&[u8]>>, global_volume: f32) -> Self {
+    pub fn new(extra_sounds: Option<Vec<(&[u8], f64)>>, global_volume: f32) -> Self {
         let mut manager =
             AudioManager::<DefaultBackend>::new(AudioManagerSettings::default()).unwrap();
 
-        let mut sound_files = vec![
-            include_bytes!("../assets/harp.ogg") as &[u8], //0 = Piano (Air)
-            include_bytes!("../assets/bass.ogg") as &[u8], //1 = Double Bass (Wood)
-            include_bytes!("../assets/bd.ogg") as &[u8],   //2 = Bass Drum (Stone)
-            include_bytes!("../assets/snare.ogg") as &[u8], //3 = Snare Drum (Sand)
-            include_bytes!("../assets/hat.ogg") as &[u8],  //4 = Click (Glass)
-            include_bytes!("../assets/guitar.ogg") as &[u8], //5 = Guitar (Wool)
-            include_bytes!("../assets/flute.ogg") as &[u8], //6 = Flute (Clay)
-            include_bytes!("../assets/bell.ogg") as &[u8], //7 = Bell (Block of Gold)
-            include_bytes!("../assets/icechime.ogg") as &[u8], //8 = Chime (Packed Ice)
-            include_bytes!("../assets/xylobone.ogg") as &[u8], //9 = Xylophone (Bone Block)
-            include_bytes!("../assets/iron_xylophone.ogg") as &[u8], //10 = Iron Xylophone (Iron Block)
-            include_bytes!("../assets/cow_bell.ogg") as &[u8],       //11 = Cow Bell (Soul Sand)
-            include_bytes!("../assets/didgeridoo.ogg") as &[u8],     //12 = Didgeridoo (Pumpkin)
-            include_bytes!("../assets/bit.ogg") as &[u8],            //13 = Bit (Block of Emerald)
-            include_bytes!("../assets/banjo.ogg") as &[u8],          //14 = Banjo (Hay)
-            include_bytes!("../assets/pling.ogg") as &[u8],          //15 = Pling (Glowstone)
+        let data = vec![
+            include_bytes!("../assets/sounds/harp.ogg") as &[u8],
+            include_bytes!("../assets/sounds/bass.ogg") as &[u8],
+            include_bytes!("../assets/sounds/bd.ogg") as &[u8],
+            include_bytes!("../assets/sounds/snare.ogg") as &[u8],
+            include_bytes!("../assets/sounds/hat.ogg") as &[u8],
+            include_bytes!("../assets/sounds/guitar.ogg") as &[u8],
+            include_bytes!("../assets/sounds/flute.ogg") as &[u8],
+            include_bytes!("../assets/sounds/bell.ogg") as &[u8],
+            include_bytes!("../assets/sounds/icechime.ogg") as &[u8],
+            include_bytes!("../assets/sounds/xylobone.ogg") as &[u8],
+            include_bytes!("../assets/sounds/iron_xylophone.ogg") as &[u8],
+            include_bytes!("../assets/sounds/cow_bell.ogg") as &[u8],
+            include_bytes!("../assets/sounds/didgeridoo.ogg") as &[u8],
+            include_bytes!("../assets/sounds/bit.ogg") as &[u8],
+            include_bytes!("../assets/sounds/banjo.ogg") as &[u8],
+            include_bytes!("../assets/sounds/pling.ogg") as &[u8],
         ];
+
+        let mut sound_files = data.iter().map(|data| (*data, 45.)).collect::<Vec<_>>();
 
         if let Some(extra_sounds) = extra_sounds {
             log::info!("Loaded {} extra sounds", extra_sounds.len());
@@ -53,7 +54,7 @@ impl AudioEngine {
         let mut sounds = HashMap::new();
 
         for (i, sound) in sound_files.iter().enumerate() {
-            sounds.insert(i as u32, AudioEngine::load_sound_data(sound.to_vec()));
+            sounds.insert(i as u32, (Self::load_sound_data(sound.0.to_vec()), sound.1));
         }
 
         log::info!("Loaded {} sounds", sounds.len());
@@ -83,13 +84,15 @@ impl AudioEngine {
             }
         };
         let sound = StaticSoundData {
-            sample_rate: sound_data.sample_rate,
-            frames: sound_data.frames.clone(),
+            sample_rate: sound_data.0.sample_rate,
+            frames: sound_data.0.frames.clone(),
             settings: StaticSoundSettings::default(),
             slice: None,
         };
 
-        let frequency_ratio = 2.0f64.powf((key + (pitch / 100.0) - 45.) / 12.0);
+        let tone = sound_data.1;
+
+        let frequency_ratio = 2.0f64.powf((key + (pitch / 100.0) - tone) / 12.0);
         let playback_rate = PlaybackRate(frequency_ratio);
 
         let epoch = 1e-6;

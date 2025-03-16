@@ -298,8 +298,8 @@ pub fn initialize_piano_dimensions(
 
 pub fn load_piano_key_textures() -> (Texture2D, Texture2D) {
     let (key_black_bytes, key_white_bytes) = (
-        include_bytes!("../assets/key_black.png"),
-        include_bytes!("../assets/key_white.png"),
+        include_bytes!("../assets/textures/key_black.png"),
+        include_bytes!("../assets/textures/key_white.png"),
     );
     let (key_black_image, key_white_image) = (
         Texture2D::from_file_with_format(key_black_bytes, None),
