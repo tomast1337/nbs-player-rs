@@ -170,9 +170,11 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 }
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 500000.;
-    const DAMPING: f32 = 20.;
-    const SPRING_CONSTANT: f32 = 700.;
+    const PRESS_FORCE: f32 = 500000.; // Press force
+    const DAMPING: f32 = 20.; // Damping factor
+    const SPRING_CONSTANT: f32 = 700.; // Spring constant
+    const MAX_OFFSET: f32 = 5.0; // Maximum offset
+    const MIN_OFFSET: f32 = -5.0; // Minimum offset
 
     for key in keys.iter_mut() {
         if key.is_pressed {
@@ -180,8 +182,8 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
             key.press_velocity += force * delta_time;
             key.press_offset += key.press_velocity * delta_time;
 
-            if key.press_offset < -5.0 {
-                key.press_offset = -5.0;
+            if key.press_offset < MIN_OFFSET {
+                key.press_offset = MIN_OFFSET;
                 key.press_velocity = 0.0;
             }
         } else {
@@ -191,6 +193,11 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
 
             if key.press_offset.abs() < 0.1 && key.press_velocity.abs() < 0.1 {
                 key.press_offset = 0.0;
+                key.press_velocity = 0.0;
+            }
+
+            if key.press_offset > MAX_OFFSET {
+                key.press_offset = MAX_OFFSET;
                 key.press_velocity = 0.0;
             }
         }
