@@ -74,7 +74,7 @@ async fn main() {
     loop {
         window_width = window::screen_width();
         window_height = window::screen_height();
-        piano_props = piano::initialize_piano_dimensions(window_width, window_height, &all_keys);
+        piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
         note_dim = piano_props.white_key_width;
         key_spacing = piano_props.key_spacing;
 

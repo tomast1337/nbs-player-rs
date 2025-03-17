@@ -303,11 +303,7 @@ pub fn draw_piano_keys(
     }
 }
 
-pub fn initialize_piano_dimensions(
-    window_width: f32,
-    window_height: f32,
-    all_keys: &Vec<PianoKey>,
-) -> PianoProps {
+pub fn initialize_piano_dimensions(window_width: f32, all_keys: &Vec<PianoKey>) -> PianoProps {
     let (white_key_texture, black_key_texture) = load_piano_key_textures();
 
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
