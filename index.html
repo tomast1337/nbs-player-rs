@@ -51,14 +51,14 @@
         }
     </style>
     <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
-    <script>load("target/wasm32-unknown-unknown/debug/nbs_player_rs.wasm");</script> <!-- Your compiled wasm file -->
+    <script>load("target/wasm32-unknown-unknown/release/nbs_player_rs.wasm");</script> <!-- Your compiled wasm file -->
 </head>
 
 <body>
     <div class="container">
         <h1>Rust NBS WASM Player</h1>
         <p class="description">Experience the power of Rust and WebAssembly with this NBS player.</p>
-        <canvas id="glcanvas" style="width: 848px; height: 480px;"></canvas>
+        <canvas id="glcanvas" tabindex="1" style="width: 848px; height: 480px;"></canvas>
         <p class="footer">Built with Rust Bevy, and WebAssembly</p>
     </div>
 </body>
