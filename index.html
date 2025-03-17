@@ -50,28 +50,15 @@
             color: #a1a1a1;
         }
     </style>
-    <script type="module">
-        import init, { start } from "./pkg/nbs_player_rs.js";
-
-        async function run() {
-            console.log("Loading song...");
-            const song = await fetch("/test-assets/turkish_march.nbs");
-            const songBuffer = await song.arrayBuffer();
-            const songArray = new Uint8Array(songBuffer);
-
-            await init();
-            run_demo();
-        }
-
-        run();
-    </script>
+    <script src="https://not-fl3.github.io/miniquad-samples/mq_js_bundle.js"></script>
+    <script>load("target/wasm32-unknown-unknown/debug/nbs_player_rs.wasm");</script> <!-- Your compiled wasm file -->
 </head>
 
 <body>
     <div class="container">
         <h1>Rust NBS WASM Player</h1>
         <p class="description">Experience the power of Rust and WebAssembly with this NBS player.</p>
-        <canvas id="canvas" style="width: 848px; height: 480px;"></canvas>
+        <canvas id="glcanvas" style="width: 848px; height: 480px;"></canvas>
         <p class="footer">Built with Rust Bevy, and WebAssembly</p>
     </div>
 </body>
