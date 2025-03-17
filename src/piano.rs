@@ -271,7 +271,7 @@ pub fn draw_piano_keys(
             },
         );
 
-        let font = crate::FONT.get().unwrap();
+        let font = crate::font::FONT.get().unwrap();
 
         // Calculate font size to fit within the key
         let max_font_size = 18; // Maximum font size

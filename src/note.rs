@@ -149,7 +149,7 @@ pub fn draw_notes(
     // Count notes being rendered
     let mut notes_rendered = 0;
 
-    let font = crate::FONT.get().unwrap();
+    let font = crate::font::FONT.get().unwrap();
 
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;

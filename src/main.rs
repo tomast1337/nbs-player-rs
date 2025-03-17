@@ -9,6 +9,7 @@ use macroquad::{
 };
 
 mod audio;
+mod font;
 mod note;
 mod piano;
 mod song;
@@ -19,7 +20,6 @@ fn time_formatter(time: f32) -> String {
     format!("{:0>2}:{:0>2}", minutes, seconds)
 }
 
-pub static FONT: OnceLock<Font> = OnceLock::new();
 #[macroquad::main("BasicShapes")]
 async fn main() {
     let mut window_width = 1280.;
@@ -69,14 +69,24 @@ async fn main() {
     let font_data = include_bytes!("../assets/fonts/Monocraft.ttf");
     let mut font = load_ttf_font_from_bytes(font_data).unwrap();
     font.set_filter(macroquad::texture::FilterMode::Nearest);
-    FONT.set(font.clone()).unwrap();
+    crate::font::FONT.set(font.clone()).unwrap();
+
+    window_width = window::screen_width();
+    window_height = window::screen_height();
+    piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
+    note_dim = piano_props.white_key_width;
+    key_spacing = piano_props.key_spacing;
 
     loop {
-        window_width = window::screen_width();
-        window_height = window::screen_height();
-        piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
-        note_dim = piano_props.white_key_width;
-        key_spacing = piano_props.key_spacing;
+        if window_width != window::screen_width() {
+            window_width = window::screen_width();
+            piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
+            note_dim = piano_props.white_key_width;
+            key_spacing = piano_props.key_spacing;
+        }
+        if window_height != window::screen_height() {
+            window_height = window::screen_height();
+        }
 
         let delta_time = get_frame_time();
 

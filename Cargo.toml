@@ -2,6 +2,9 @@
 name = "nbs-player-rs"
 version = "0.1.0"
 edition = "2024"
+description = "A simple NBS player written in Rust"
+license = "AGPL-3.0 license"
+repository = ""
 
 [dependencies]
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
@@ -12,9 +15,11 @@ wasm-timer = "0.2.5"
 web-sys = { version = "0.3.77", features = ["Window", "Document", "Element", "AudioContext", "WebGlRenderingContext", "HtmlCanvasElement", "CanvasRenderingContext2d", "console", "WebGl2RenderingContext", "AudioBufferSourceNode", "AudioBuffer", "AudioDestinationNode", "AudioContextState", "Performance"] }
 log = "0.4.26"
 kira = "0.10.4"
-macroquad = "0.4.13"
-zip = "2.2.3"
+macroquad = {path = "./macroquad"}
+zip = { version = "2.4.1" , default-features = false, features = [ "deflate" ] }
 
 
-[lib]
-crate-type = ["cdylib", "rlib"]
+
+#[lib]
+#crate-type = ["cdylib", "rlib"]
+

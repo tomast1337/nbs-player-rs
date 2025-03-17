@@ -3,13 +3,17 @@
 ## Run the compiler in watch mode
 
 ```bash
-cargo watch -x "wasm-pack build --dev --target web"
+cargo install watchexec
+```
+
+```bash
+watchexec -e rs "wasm-pack build --dev --target web"
 ```
 
 ## Run the server
 
 ```bash
-npx server .
+npx serve .
 ```
 
 # For building the project
