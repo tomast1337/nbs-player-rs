@@ -1,9 +1,7 @@
-use std::sync::OnceLock;
-
 use macroquad::{
     self, color,
     input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
-    text::{Font, TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
+    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
 };
