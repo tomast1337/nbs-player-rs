@@ -4,7 +4,7 @@ use macroquad::{
     color,
     math::Vec2,
     shapes::draw_rectangle,
-    text::{TextParams, draw_text_ex, measure_text},
+    text::{Font, TextParams, draw_text_ex, measure_text},
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
 
@@ -232,6 +232,13 @@ pub fn draw_piano_keys(
     let total_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
     let total_width = total_white_keys * (white_key_width + key_spacing) - key_spacing;
 
+    let piano_x = (window_width - total_width) / 2.0;
+    let piano_y = window_height - white_key_height;
+
+    let font = crate::font::FONT.get().unwrap();
+    let max_font_size = 18;
+    let min_font_size = 8;
+
     // draw a background for the piano
     draw_rectangle(
         (window_width - total_width) / 2.0,
@@ -242,32 +249,34 @@ pub fn draw_piano_keys(
     );
 
     for (i, key) in all_keys.iter().enumerate() {
-        let (x_pos, y_pos, width, height, texture, text_color) = if key.is_white {
-            let x =
-                (i as f32 * (white_key_width + key_spacing)) + (window_width - total_width) / 2.0;
-            let y = window_height - white_key_height - key.press_offset;
-            (
-                x,
-                y,
-                white_key_width,
-                white_key_height,
-                white_key_texture,
-                color::BLACK,
-            )
-        } else if let Some(white_idx) = key.white_key_index {
-            let x = (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
-            let y = window_height - 5. - white_key_height - key.press_offset;
-            (
-                x,
-                y,
-                black_key_width,
-                black_key_height,
-                black_key_texture,
-                color::WHITE,
-            )
-        } else {
-            continue;
-        };
+        let (x_pos, y_pos, width, height, texture, text_color) =
+            match (key.is_white, key.white_key_index) {
+                (true, _) => {
+                    let x = piano_x + (i as f32 * (white_key_width + key_spacing));
+                    let y = piano_y - key.press_offset;
+                    (
+                        x,
+                        y,
+                        white_key_width,
+                        white_key_height,
+                        white_key_texture,
+                        color::BLACK,
+                    )
+                }
+                (false, Some(white_idx)) => {
+                    let x = piano_x + (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
+                    let y = piano_y - 5.0 - key.press_offset;
+                    (
+                        x,
+                        y,
+                        black_key_width,
+                        black_key_height,
+                        black_key_texture,
+                        color::WHITE,
+                    )
+                }
+                _ => continue,
+            };
 
         // Draw key with texture
         draw_texture_ex(
@@ -281,18 +290,12 @@ pub fn draw_piano_keys(
             },
         );
 
-        let font = crate::font::FONT.get().unwrap();
-
         // Calculate font size to fit within the key
-        let max_font_size = 18; // Maximum font size
-        let min_font_size = 8; // Minimum font size
         let mut font_size = max_font_size;
-
-        // Measure text width and adjust font size if necessary
-        let mut text_width = measure_text(&key.label, Some(&font), font_size, 1.0).width;
-        while text_width > width - 5. && font_size > min_font_size {
+        let mut text_width = measure_text(&key.label, Some(font), font_size, 1.0).width;
+        while text_width > width - 5.0 && font_size > min_font_size {
             font_size -= 1;
-            text_width = measure_text(&key.label, Some(&font), font_size, 1.0).width;
+            text_width = measure_text(&key.label, Some(font), font_size, 1.0).width;
         }
 
         // Center text horizontally within the key
@@ -304,7 +307,7 @@ pub fn draw_piano_keys(
             text_x,
             y_pos + height - height * 0.25,
             TextParams {
-                font: Some(&font.clone()),
+                font: Some(font),
                 font_size,
                 color: text_color,
                 ..Default::default()
