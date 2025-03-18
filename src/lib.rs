@@ -1,7 +1,6 @@
 use bevy::prelude::*;
 use log;
 use wasm_bindgen::prelude::wasm_bindgen;
-use web_sys;
 
 //mod audio;
 mod song;
