@@ -325,6 +325,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "bevy-fps-counter"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "47da135c651b8c5aa3a891406cfe9a11a05c6fdfd3825999d13840d830d0335b"
+dependencies = [
+ "bevy",
+]
+
+[[package]]
 name = "bevy_a11y"
 version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2743,6 +2752,7 @@ name = "nbs-player-rs"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy-fps-counter",
  "console_error_panic_hook",
  "console_log",
  "kira",

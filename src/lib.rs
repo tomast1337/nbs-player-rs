@@ -1,13 +1,26 @@
-use bevy::{asset::AssetLoader, prelude::*, render::render_resource::FilterMode};
+use bevy::{
+    asset::RenderAssetUsages,
+    image::{CompressedImageFormats, ImageSampler},
+    prelude::*,
+};
+use bevy_fps_counter::{FpsCounter, FpsCounterPlugin};
 use log;
 use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
 
 //mod audio;
+mod piano;
 mod song;
 mod utils;
 
-#[derive(Asset, TypePath, Debug)]
-struct FontAsset(Font);
+#[derive(Resource)]
+pub struct Textures {
+    pub note_texture: Handle<Image>,
+    pub white_key_texture: Handle<Image>,
+    pub black_key_texture: Handle<Image>,
+}
+
+#[derive(Resource)]
+pub struct FontAsset(Handle<Font>);
 
 #[wasm_bindgen]
 pub fn run(
@@ -65,31 +78,91 @@ pub fn run(
             meta_check: bevy::asset::AssetMetaCheck::Never,
             ..default()
         }),))
-        .add_systems(Startup, setup);
+        .add_systems(
+            Startup,
+            (
+                setup,
+                load_textures,
+                piano::setup_piano_props,
+                piano::setup_piano_keys,
+            )
+                .chain(),
+        )
+        .add_systems(
+            Update,
+            (piano::update_key_animation, piano::draw_piano_keys),
+        )
+        .add_plugins(FpsCounterPlugin);
 
     app.run();
 
     Ok(())
 }
 
-fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
+fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-
-    let font_bytes = include_bytes!("../assets/fonts/Monocraft.ttf").to_vec();
-    let font = Font::try_from_bytes(font_bytes).unwrap();
-    let font_handle = asset_server.add(font);
 
     commands.spawn((
         Transform::from_translation(Vec3::new(0., 0., 0.)),
         GlobalTransform::default(),
         Text::new("hello\nbevy!"),
         TextFont {
-            font: font_handle,
             font_smoothing: bevy::text::FontSmoothing::None,
             font_size: 40.,
             ..Default::default()
         },
     ));
+}
+
+fn load_textures(mut commands: Commands, asset_server: Res<AssetServer>) {
+    let (key_black_bytes, key_white_bytes) = (
+        include_bytes!("../assets/textures/key_black.png").to_vec(),
+        include_bytes!("../assets/textures/key_white.png").to_vec(),
+    );
+
+    let white_key_texture = Image::from_buffer(
+        &key_white_bytes,
+        bevy::image::ImageType::Extension("png"),
+        CompressedImageFormats::default(),
+        false,
+        ImageSampler::Default,
+        RenderAssetUsages::default(),
+    )
+    .unwrap();
+
+    let black_key_texture = Image::from_buffer(
+        &key_black_bytes,
+        bevy::image::ImageType::Extension("png"),
+        CompressedImageFormats::default(),
+        false,
+        ImageSampler::Default,
+        RenderAssetUsages::default(),
+    )
+    .unwrap();
+
+    let note_bytes = include_bytes!("../assets/textures/note_block.png");
+
+    let note_texture = Image::from_buffer(
+        note_bytes,
+        bevy::image::ImageType::Extension("png"),
+        CompressedImageFormats::default(),
+        false,
+        ImageSampler::default(),
+        RenderAssetUsages::default(),
+    )
+    .unwrap();
+
+    commands.insert_resource(Textures {
+        note_texture: asset_server.add(note_texture),
+        white_key_texture: asset_server.add(white_key_texture),
+        black_key_texture: asset_server.add(black_key_texture),
+    });
+
+    let font_bytes = include_bytes!("../assets/fonts/Monocraft.ttf").to_vec();
+    let font = Font::try_from_bytes(font_bytes).unwrap();
+    let font_handle = asset_server.add(font);
+
+    commands.insert_resource(FontAsset(font_handle));
 }
 
 /*

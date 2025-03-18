@@ -1,50 +1,53 @@
-use std::collections::HashMap;
+use bevy::prelude::*;
 
-use macroquad::{
-    color,
-    math::Vec2,
-    shapes::draw_rectangle,
-    text::{TextParams, draw_text_ex, measure_text},
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
-};
+use crate::{FontAsset, Textures};
 
-#[derive(Debug)]
+#[derive(Component)]
+pub struct PianoKey {
+    pub midi_key: u8,
+    pub label: String,
+    pub is_pressed: bool,
+    pub is_white: bool,
+    pub press_offset: f32,
+    pub press_velocity: f32,
+    pub white_key_index: usize,
+}
+
+#[derive(Resource)]
 pub struct PianoProps {
     pub key_spacing: f32,
     pub white_key_width: f32,
     pub white_key_height: f32,
     pub black_key_width: f32,
     pub black_key_height: f32,
-    pub white_key_texture: Texture2D,
-    pub black_key_texture: Texture2D,
 }
 
-#[derive(Clone, Debug)]
-pub struct PianoKey {
-    pub key: u8,
-    pub label: String,
-    pub is_pressed: bool,
-    pub white_key_index: Option<usize>,
-    pub is_white: bool,
-    pub press_offset: f32,
-    pub press_velocity: f32,
+pub fn setup_piano_props(mut commands: Commands, windows: Query<&Window>) {
+    const KEY_QUANTITY: f32 = 52.;
+    let window = windows.single();
+    let window_width = window.width();
+
+    let black_key_width_ratio = 0.8;
+    let black_key_height_ratio = 0.6;
+
+    // Spacing between keys
+    let key_spacing = 0.0;
+
+    let white_key_width = (window_width / KEY_QUANTITY) - key_spacing;
+    let white_key_height = white_key_width * 3.;
+    let black_key_width = (white_key_width * black_key_width_ratio) - key_spacing;
+    let black_key_height = white_key_height * black_key_height_ratio;
+
+    commands.insert_resource(PianoProps {
+        key_spacing,
+        white_key_width,
+        white_key_height,
+        black_key_width,
+        black_key_height,
+    });
 }
 
-impl PianoKey {
-    fn new(key: u8, label: &str, is_white: bool, white_key_index: Option<usize>) -> Self {
-        Self {
-            key,
-            label: label.to_string(),
-            white_key_index: white_key_index,
-            is_white,
-            is_pressed: false,
-            press_offset: 0.0,
-            press_velocity: 0.0,
-        }
-    }
-}
-
-pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
+pub fn setup_piano_keys(mut commands: Commands, textures: Res<Textures>, font: Res<FontAsset>) {
     let white_keys: [(&str, i32); 52] = [
         ("A0", 21),
         ("B0", 23),
@@ -139,38 +142,73 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
         ("A#7", 106),
     ];
 
-    let white_keys_vec: Vec<PianoKey> = white_keys
-        .iter()
-        .enumerate()
-        .map(|(index, (label, key))| PianoKey::new(*key as u8, label, true, Some(index)))
-        .collect();
+    let font = font.0.clone();
 
-    let black_keys_vec: Vec<PianoKey> = black_keys
-        .iter()
-        .map(|(label, key)| {
-            let white_key_index = white_keys_vec
-                .iter()
-                .position(|white_key| white_key.key > *key as u8)
-                .map(|index| index.saturating_sub(1));
-
-            PianoKey::new(*key as u8, label, false, white_key_index)
-        })
-        .collect();
-
-    // Combine into single vector
-    let mut all_keys = white_keys_vec;
-    all_keys.extend(black_keys_vec);
-
-    // Create hashmap for quick lookup
-    let mut key_map = HashMap::new();
-    for (idx, key) in all_keys.iter().enumerate() {
-        key_map.insert(key.key, idx);
+    for (index, (label, midi_key)) in white_keys.iter().enumerate() {
+        let texture = textures.white_key_texture.clone();
+        commands.spawn((
+            Sprite {
+                image: texture,
+                ..Default::default()
+            },
+            PianoKey {
+                white_key_index: index,
+                midi_key: *midi_key as u8,
+                label: label.to_string(),
+                is_pressed: false,
+                is_white: true,
+                press_offset: 0.0,
+                press_velocity: 0.0,
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.1)),
+            GlobalTransform::default(),
+            Text::new(label.to_string()),
+            TextFont {
+                font_smoothing: bevy::text::FontSmoothing::None,
+                font: font.clone(),
+                font_size: 10.,
+                ..Default::default()
+            },
+        ));
     }
 
-    (all_keys, key_map)
+    for (label, midi_key) in black_keys.iter() {
+        let texture = textures.black_key_texture.clone();
+        let label = label.to_string();
+        let white_key_index = white_keys
+            .iter()
+            .position(|(_, key)| *key > *midi_key)
+            .map(|idx| idx.saturating_sub(1))
+            .unwrap_or(0);
+
+        commands.spawn((
+            Sprite {
+                image: texture,
+                ..Default::default()
+            },
+            PianoKey {
+                white_key_index: white_key_index,
+                midi_key: *midi_key as u8,
+                label: label.to_string(),
+                is_pressed: false,
+                is_white: false,
+                press_offset: 0.0,
+                press_velocity: 0.0,
+            },
+            Transform::from_translation(Vec3::new(0.0, 0.0, 0.1)),
+            GlobalTransform::default(),
+            Text::new(label.to_string()),
+            TextFont {
+                font_smoothing: bevy::text::FontSmoothing::None,
+                font: font.clone(),
+                font_size: 10.,
+                ..Default::default()
+            },
+        ));
+    }
 }
 
-pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
+pub fn update_key_animation(mut keys: Query<&mut PianoKey>, time: Res<Time>) {
     const PRESS_FORCE: f32 = 50000000.0; // Press force
     const DAMPING: f32 = 20.0; // Damping factor
     const SPRING_CONSTANT: f32 = 700.0; // Spring constant
@@ -178,12 +216,14 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
     const MIN_OFFSET: f32 = -10.0; // Minimum offset
     const STOP_THRESHOLD: f32 = 0.1; // Threshold to stop animation
 
+    let delta_time = time.delta_secs();
+
     // Precompute constants
     let damping_delta = DAMPING * delta_time;
     let press_force_delta = PRESS_FORCE * delta_time;
     let spring_constant_delta = SPRING_CONSTANT * delta_time;
 
-    for key in keys.iter_mut() {
+    for mut key in keys.iter_mut() {
         let force = if key.is_pressed {
             // Force when key is pressed
             -press_force_delta - damping_delta * (key.press_velocity + 1000.0)
@@ -214,6 +254,95 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
         }
     }
 }
+
+pub fn draw_piano_keys(
+    mut query: Query<(&PianoKey, &mut Transform, &mut Text)>,
+    piano_props: Res<PianoProps>,
+    windows: Query<&Window>,
+) {
+    let window = windows.single();
+    const KEY_QUANTITY: f32 = 52.;
+    let total_width = KEY_QUANTITY * (piano_props.white_key_width + piano_props.key_spacing)
+        - piano_props.key_spacing;
+
+    let piano_x = (window.width() - total_width) / 2.0;
+    let piano_y = window.height() - piano_props.white_key_height;
+
+    for (key, mut transform, text) in query.iter_mut() {
+        let (x_pos, y_pos) = match key.is_white {
+            true => {
+                let index = key.white_key_index as f32;
+                let x = piano_x + (index * (piano_props.white_key_width + piano_props.key_spacing));
+                let y = piano_y - key.press_offset;
+                (x, y)
+            }
+            false => {
+                let white_idx = key.white_key_index as f32;
+                let x = piano_x
+                    + ((white_idx + 0.5) * (piano_props.white_key_width + piano_props.key_spacing));
+                let y = piano_y - 5.0 - key.press_offset;
+                (x, y)
+            }
+        };
+
+        transform.translation = Vec3::new(x_pos, y_pos, 0.1);
+    }
+}
+
+/*
+use std::collections::HashMap;
+
+use macroquad::{
+    color,
+    math::Vec2,
+    shapes::draw_rectangle,
+    text::{TextParams, draw_text_ex, measure_text},
+    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
+};let white_key_texture = Image::new(size, dimension, data, format, asset_usage)
+
+    let white_key_texture = asset_server.load("textures/key_white.png");
+    let black_key_texture = asset_server.load("textures/key_black.png");
+
+    commands.insert_resource(white_key_texture.clone());
+    commands.insert_resource(black_key_texture.clone());
+#[derive(Debug)]
+pub struct PianoProps {
+    pub key_spacing: f32,
+    pub white_key_width: f32,
+    pub white_key_height: f32,
+    pub black_key_width: f32,
+    pub black_key_height: f32,
+    pub white_key_texture: Texture2D,
+    pub black_key_texture: Texture2D,
+}
+
+#[derive(Clone, Debug)]
+pub struct PianoKey {
+    pub key: u8,
+    pub label: String,
+    pub is_pressed: bool,
+    pub white_key_index: Option<usize>,
+    pub is_white: bool,
+    pub press_offset: f32,
+    pub press_velocity: f32,
+}
+
+impl PianoKey {
+    fn new(key: u8, label: &str, is_white: bool, white_key_index: Option<usize>) -> Self {
+        Self {
+            key,
+            label: label.to_string(),
+            white_key_index: white_key_index,
+            is_white,
+            is_pressed: false,
+            press_offset: 0.0,
+            press_velocity: 0.0,
+        }
+    }
+}
+
+
+
 
 pub fn draw_piano_keys(
     window_width: f32,
@@ -357,3 +486,4 @@ pub fn load_piano_key_textures() -> (Texture2D, Texture2D) {
 
     (key_white_image, key_black_image)
 }
+*/
