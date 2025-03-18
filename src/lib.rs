@@ -1,10 +1,13 @@
-use bevy::prelude::*;
+use bevy::{asset::AssetLoader, prelude::*, render::render_resource::FilterMode};
 use log;
 use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
 
 //mod audio;
 mod song;
 mod utils;
+
+#[derive(Asset, TypePath, Debug)]
+struct FontAsset(Font);
 
 #[wasm_bindgen]
 pub fn run(
@@ -69,8 +72,24 @@ pub fn run(
     Ok(())
 }
 
-fn setup(mut commands: Commands) {
+fn setup(mut commands: Commands, asset_server: Res<AssetServer>) {
     commands.spawn(Camera2d);
+
+    let font_bytes = include_bytes!("../assets/fonts/Monocraft.ttf").to_vec();
+    let font = Font::try_from_bytes(font_bytes).unwrap();
+    let font_handle = asset_server.add(font);
+
+    commands.spawn((
+        Transform::from_translation(Vec3::new(0., 0., 0.)),
+        GlobalTransform::default(),
+        Text::new("hello\nbevy!"),
+        TextFont {
+            font: font_handle,
+            font_smoothing: bevy::text::FontSmoothing::None,
+            font_size: 40.,
+            ..Default::default()
+        },
+    ));
 }
 
 /*
