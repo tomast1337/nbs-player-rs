@@ -1,31 +1,79 @@
-use macroquad::{
-    self, color,
-    input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
-    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
-    time::{get_fps, get_frame_time},
-    window::{self, clear_background, request_new_screen_size},
-};
+// use macroquad::{
+//    self, color,
+//    input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
+//    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
+//    time::{get_fps, get_frame_time},
+//    window::{self, clear_background, request_new_screen_size},
+// };
+
+use glow::{self};
+use log;
+use wasm_bindgen::{JsCast, prelude::wasm_bindgen};
+use web_sys;
 
 mod audio;
-mod font;
-mod note;
-mod piano;
+// mod font;
+// mod note;
+// mod piano;
 mod song;
+mod utils;
 
-fn time_formatter(time: f32) -> String {
-    let minutes = (time / 60.0).floor() as u32;
-    let seconds = (time % 60.0) as u32;
-    format!("{:0>2}:{:0>2}", minutes, seconds)
+struct Context {
+    gl: glow::Context,
+    width: f32,
+    height: f32,
 }
 
-#[macroquad::main("BasicShapes")]
-async fn main() {
-    let mut window_width = 1280.;
-    let mut window_height = 720.;
+impl Context {
+    fn new(canvas_id: &str, width: f32, height: f32) -> Self {
+        let canvas = web_sys::window()
+            .unwrap()
+            .document()
+            .unwrap()
+            .get_element_by_id(canvas_id)
+            .unwrap()
+            .dyn_into::<web_sys::HtmlCanvasElement>()
+            .unwrap();
 
-    request_new_screen_size(window_width, window_height);
+        canvas.set_width(width as u32);
+        canvas.set_height(height as u32);
 
-    let nbs_data = song::load_nbs_file(None);
+        let mut attrs = web_sys::WebGlContextAttributes::new();
+        attrs.set_stencil(true);
+        attrs.set_antialias(false);
+
+        let webgl2_context = canvas
+            .get_context_with_context_options("webgl2", &attrs)
+            .unwrap()
+            .unwrap()
+            .dyn_into::<web_sys::WebGl2RenderingContext>()
+            .unwrap();
+
+        let gl = glow::Context::from_webgl2_context(webgl2_context);
+
+        Self { gl, width, height }
+    }
+}
+
+#[wasm_bindgen]
+pub async fn run(
+    window_width: Option<f32>,
+    window_height: Option<f32>,
+    nbs_file: Option<Vec<u8>>,
+    canvas_id: Option<String>,
+) {
+    console_log::init_with_level(log::Level::Debug).unwrap();
+    console_error_panic_hook::set_once();
+
+    let window_width = window_width.unwrap_or(1280.);
+    let window_height = window_height.unwrap_or(720.);
+    let canvas_id = canvas_id.unwrap_or("canvas".to_string());
+
+    log::debug!("Canvas ID: {}", canvas_id);
+    log::debug!("Window Width: {}", window_width);
+    log::debug!("Window Height: {}", window_height);
+
+    let nbs_data = song::load_nbs_file(nbs_file.as_deref());
 
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
@@ -42,6 +90,11 @@ async fn main() {
     let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
     let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
+    log::debug!("Song Title: {}", title);
+    log::debug!("Notes Per Second: {}", notes_per_second);
+    log::debug!("Total Duration: {}", total_duration);
+
+    /*
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
     let mut piano_props;
@@ -270,4 +323,6 @@ async fn main() {
 
         window::next_frame().await
     }
+
+     */
 }
