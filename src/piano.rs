@@ -171,33 +171,43 @@ pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
 }
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 50000000.; // Press force
-    const DAMPING: f32 = 20.; // Damping factor
-    const SPRING_CONSTANT: f32 = 700.; // Spring constant
+    const PRESS_FORCE: f32 = 50000000.0; // Press force
+    const DAMPING: f32 = 20.0; // Damping factor
+    const SPRING_CONSTANT: f32 = 700.0; // Spring constant
     const MAX_OFFSET: f32 = 10.0; // Maximum offset
     const MIN_OFFSET: f32 = -10.0; // Minimum offset
+    const STOP_THRESHOLD: f32 = 0.1; // Threshold to stop animation
+
+    // Precompute constants
+    let damping_delta = DAMPING * delta_time;
+    let press_force_delta = PRESS_FORCE * delta_time;
+    let spring_constant_delta = SPRING_CONSTANT * delta_time;
 
     for key in keys.iter_mut() {
-        if key.is_pressed {
-            let force = -PRESS_FORCE - DAMPING * (key.press_velocity + 1000.);
-            key.press_velocity += force * delta_time;
-            key.press_offset += key.press_velocity * delta_time;
+        let force = if key.is_pressed {
+            // Force when key is pressed
+            -press_force_delta - damping_delta * (key.press_velocity + 1000.0)
+        } else {
+            // Force when key is released
+            -key.press_offset * spring_constant_delta - damping_delta * key.press_velocity
+        };
 
+        // Update velocity and offset
+        key.press_velocity += force;
+        key.press_offset += key.press_velocity * delta_time;
+
+        // Clamp offset and handle stopping condition
+        if key.is_pressed {
             if key.press_offset < MIN_OFFSET {
                 key.press_offset = MIN_OFFSET;
                 key.press_velocity = 0.0;
             }
         } else {
-            let force = -key.press_offset * SPRING_CONSTANT - DAMPING * key.press_velocity;
-            key.press_velocity += force * delta_time;
-            key.press_offset += key.press_velocity * delta_time;
-
-            if key.press_offset.abs() < 0.1 && key.press_velocity.abs() < 0.1 {
+            if key.press_offset.abs() < STOP_THRESHOLD && key.press_velocity.abs() < STOP_THRESHOLD
+            {
                 key.press_offset = 0.0;
                 key.press_velocity = 0.0;
-            }
-
-            if key.press_offset > MAX_OFFSET {
+            } else if key.press_offset > MAX_OFFSET {
                 key.press_offset = MAX_OFFSET;
                 key.press_velocity = 0.0;
             }
