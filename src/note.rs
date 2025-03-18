@@ -33,14 +33,27 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
     for note in &song.notes {
         let tick = note.tick as usize;
         if tick < note_blocks.len() {
-            note_blocks[tick].push(NoteBlock {
-                was_played: false,
-                instrument: note.instrument,
-                key: note.key,
-                velocity: note.velocity,
-                panning: note.panning,
-                pitch: note.pitch,
-            });
+            // get note layer
+            if note.layer as usize >= song.layers.len() {
+                note_blocks[tick].push(NoteBlock {
+                    was_played: false,
+                    instrument: note.instrument,
+                    key: note.key,
+                    velocity: note.velocity,
+                    panning: note.panning,
+                    pitch: note.pitch,
+                });
+            } else {
+                let layer = &song.layers[note.layer as usize];
+                note_blocks[tick].push(NoteBlock {
+                    was_played: false,
+                    instrument: note.instrument,
+                    key: note.key,
+                    velocity: note.velocity * layer.volume,
+                    panning: note.panning * layer.panning,
+                    pitch: note.pitch,
+                });
+            }
         }
     }
 
