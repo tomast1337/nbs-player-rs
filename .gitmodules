@@ -1,0 +1,3 @@
+[submodule "macroquad"]
+	path = macroquad
+	url = https://github.com/not-fl3/macroquad
