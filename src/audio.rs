@@ -71,11 +71,41 @@ impl AudioEngine {
     }
 
     fn get_sound_data(&mut self, note: &NoteBlock) -> Option<StaticSoundData> {
+        // Fast approximation for 2^x
+        fn fast_pow2(x: f32) -> f32 {
+            let x0 = x.floor();
+            let x1 = x - x0;
+
+            // Handle overflow and underflow
+            if x0 >= 32.0 {
+                return f32::INFINITY; // 2^x is too large for f32
+            } else if x0 <= -32.0 {
+                return 0.0; // 2^x is too small for f32
+            }
+
+            // Calculate 2^x1 using a polynomial approximation
+            let p = 1.0 + x1 * (0.693147 + x1 * (0.241586 + x1 * 0.052043));
+
+            // Calculate 2^x0 using bit shifting (only for positive x0)
+            if x0 >= 0.0 {
+                p * (1 << x0 as i32) as f32
+            } else {
+                p / (1 << (-x0 as i32)) as f32
+            }
+        }
+
+        // Precompute constants
+        const INV_12: f32 = 1.0 / 12.0;
+        const EPOCH: f32 = 1e-6;
+
+        // Extract note properties
         let sound_id = note.instrument as u32;
-        let key = note.key as f64;
+        let key = note.key as f32; // Use f32 directly
         let velocity = note.velocity as f32;
         let panning = note.panning as f32;
-        let pitch = note.pitch as f64;
+        let pitch = note.pitch as f32; // Use f32 directly
+
+        // Fetch sound data
         let sound_data = match self.sounds.get(&sound_id) {
             Some(data) => data,
             None => {
@@ -83,6 +113,8 @@ impl AudioEngine {
                 return None;
             }
         };
+
+        // Clone sound data
         let sound = StaticSoundData {
             sample_rate: sound_data.0.sample_rate,
             frames: sound_data.0.frames.clone(),
@@ -90,27 +122,27 @@ impl AudioEngine {
             slice: None,
         };
 
-        let tone = sound_data.1;
+        // Calculate frequency ratio using fast approximation
+        let tone = sound_data.1 as f32;
+        let frequency_ratio = fast_pow2((key + (pitch / 100.0) - tone) * INV_12);
+        let playback_rate = PlaybackRate(frequency_ratio as f64);
 
-        let frequency_ratio = 2.0f64.powf((key + (pitch / 100.0) - tone) / 12.0);
-        let playback_rate = PlaybackRate(frequency_ratio);
-
-        let epoch = 1e-6;
-
-        let volume: Decibels = Decibels::from(
-            10.0 * ((velocity * self.global_volume + epoch) / (100.0 + epoch)).log10(),
+        // Calculate volume in decibels
+        let volume = Decibels::from(
+            10.0 * ((velocity * self.global_volume + EPOCH) / (100.0 + EPOCH)).log10(),
         );
 
-        let pan = Panning((panning / 100.0) - 1.);
+        // Calculate panning
+        let pan = Panning((panning / 100.0) - 1.0);
 
+        // Apply settings
         let settings = StaticSoundSettings::default()
             .volume(volume)
             .panning(pan)
             .playback_rate(playback_rate);
-        // get resampling sound with the specified settings
-        let sample = sound.clone().with_settings(settings.clone());
 
-        Some(sample)
+        // Return resampled sound with the specified settings
+        Some(sound.clone().with_settings(settings))
     }
 
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
