@@ -4,7 +4,7 @@ use macroquad::{
     color,
     math::Vec2,
     shapes::draw_rectangle,
-    text::{Font, TextParams, draw_text_ex, measure_text},
+    text::{TextParams, draw_text_ex, measure_text},
     texture::{DrawTextureParams, Texture2D, draw_texture_ex},
 };
 
