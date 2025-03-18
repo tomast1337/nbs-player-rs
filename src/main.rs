@@ -85,6 +85,13 @@ async fn main() {
         let delta_time = get_frame_time();
 
         if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
+            if elapsed_time >= total_duration {
+                elapsed_time = 0.;
+                current_tick = 0.;
+                played_ticks = vec![false; nbs_file.header.song_length as usize];
+                note_blocks = note::get_note_blocks(&nbs_file);
+                is_paused = false;
+            }
             is_paused = !is_paused;
         }
 
