@@ -5,18 +5,14 @@ use macroquad::{
     time::{get_fps, get_frame_time},
     window::{self, clear_background, request_new_screen_size},
 };
+use utils::time_formatter;
 
 mod audio;
 mod font;
 mod note;
 mod piano;
 mod song;
-
-fn time_formatter(time: f32) -> String {
-    let minutes = (time / 60.0).floor() as u32;
-    let seconds = (time % 60.0) as u32;
-    format!("{:0>2}:{:0>2}", minutes, seconds)
-}
+mod utils;
 
 #[macroquad::main("BasicShapes")]
 async fn main() {
