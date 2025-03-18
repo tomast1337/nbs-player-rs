@@ -211,8 +211,11 @@ async fn main() {
             15.0,
             text_parameters.clone(),
         );
+
+        let is_end = elapsed_time >= total_duration;
+
         // Draw pause state
-        if is_paused {
+        if is_paused && !is_end {
             draw_text_ex(
                 "Paused",
                 window_width / 2. - 50.,
@@ -221,6 +224,45 @@ async fn main() {
                     font_size: 40,
                     font: Some(&font),
                     color: color::RED,
+                    ..Default::default()
+                },
+            );
+        }
+
+        if is_end {
+            draw_text_ex(
+                "End of Song",
+                window_width / 2. - 50.,
+                window_height / 2.,
+                TextParams {
+                    font_size: 40,
+                    font: Some(&font),
+                    color: color::RED,
+                    ..Default::default()
+                },
+            );
+            // draw title
+            draw_text_ex(
+                &title,
+                window_width / 2. - 50.,
+                window_height / 2. + 50.,
+                TextParams {
+                    font_size: 20,
+                    font: Some(&font),
+                    color: color::BLACK,
+                    ..Default::default()
+                },
+            );
+
+            // draw press space to restart
+            draw_text_ex(
+                "Press Space to Restart",
+                window_width / 2. - 50.,
+                window_height / 2. + 100.,
+                TextParams {
+                    font_size: 20,
+                    font: Some(&font),
+                    color: color::BLACK,
                     ..Default::default()
                 },
             );

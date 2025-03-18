@@ -80,8 +80,7 @@ fn load_nbs_from_file<'a>(bytes: &'a [u8]) -> SongData<'a> {
 }
 
 pub fn load_nbs_file<'a>(song_data: Option<&'a [u8]>) -> SongData<'a> {
-    let song_data_bytes =
-        song_data.unwrap_or_else(|| include_bytes!("../test-assets/bo en - My Time.zip"));
+    let song_data_bytes = song_data.unwrap_or_else(|| include_bytes!("../test-assets/Rush E.nbs"));
 
     if is_zip_file(song_data_bytes) {
         load_nbs_from_zip(song_data_bytes)
