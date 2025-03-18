@@ -1,18 +1,18 @@
 use bevy::prelude::*;
 use log;
-use wasm_bindgen::prelude::wasm_bindgen;
+use wasm_bindgen::{JsValue, prelude::wasm_bindgen};
 
 //mod audio;
 mod song;
 mod utils;
 
 #[wasm_bindgen]
-pub async fn run(
+pub fn run(
     window_width: Option<f32>,
     window_height: Option<f32>,
     nbs_file: Option<Vec<u8>>,
     canvas_id: Option<String>,
-) {
+) -> Result<(), JsValue> {
     console_log::init_with_level(log::Level::Debug).unwrap();
     console_error_panic_hook::set_once();
 
@@ -63,6 +63,10 @@ pub async fn run(
             ..default()
         }),))
         .add_systems(Startup, setup);
+
+    app.run();
+
+    Ok(())
 }
 
 fn setup(mut commands: Commands) {
