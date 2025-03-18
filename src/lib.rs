@@ -1,3 +1,76 @@
+use bevy::prelude::*;
+use log;
+use wasm_bindgen::prelude::wasm_bindgen;
+use web_sys;
+
+//mod audio;
+mod song;
+mod utils;
+
+#[wasm_bindgen]
+pub async fn run(
+    window_width: Option<f32>,
+    window_height: Option<f32>,
+    nbs_file: Option<Vec<u8>>,
+    canvas_id: Option<String>,
+) {
+    console_log::init_with_level(log::Level::Debug).unwrap();
+    console_error_panic_hook::set_once();
+
+    let window_width = window_width.unwrap_or(1280.);
+    let window_height = window_height.unwrap_or(720.);
+    let canvas_id = canvas_id.unwrap_or("canvas".to_string());
+
+    log::debug!("Canvas ID: {}", canvas_id);
+    log::debug!("Window Width: {}", window_width);
+    log::debug!("Window Height: {}", window_height);
+
+    let nbs_data = song::load_nbs_file(nbs_file.as_deref());
+
+    let nbs_file = nbs_data.song;
+    let extra_sounds = nbs_data.extra_sounds;
+
+    if extra_sounds.len() == 0 {
+        log::warn!("No extra sounds loaded");
+    } else {
+        println!("{:?}", nbs_file.instruments);
+    }
+
+    let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
+    let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
+    let title: String = format!("{} - {}", song_name, song_author);
+    let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
+    let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
+
+    log::debug!("Song Title: {}", title);
+    log::debug!("Notes Per Second: {}", notes_per_second);
+    log::debug!("Total Duration: {}", total_duration);
+
+    let mut app = App::new();
+
+    app.add_plugins((DefaultPlugins
+        .set(WindowPlugin {
+            primary_window: Some(Window {
+                resolution: (window_width, window_height).into(),
+                canvas: Some(canvas_id),
+                ..default()
+            }),
+            exit_condition: bevy::window::ExitCondition::OnPrimaryClosed,
+            close_when_requested: false,
+            ..Default::default()
+        })
+        .set(AssetPlugin {
+            meta_check: bevy::asset::AssetMetaCheck::Never,
+            ..default()
+        }),))
+        .add_systems(Startup, setup);
+}
+
+fn setup(mut commands: Commands) {
+    commands.spawn(Camera2d);
+}
+
+/*
 use macroquad::{
     self, color,
     input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
@@ -273,3 +346,4 @@ async fn main() {
         window::next_frame().await
     }
 }
+*/

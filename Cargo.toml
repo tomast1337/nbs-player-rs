@@ -10,11 +10,16 @@ repository = ""
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
 log = "0.4.26"
 kira = "0.10.4"
-macroquad = {path = "./macroquad"}
 zip = { version = "2.4.1" , default-features = false, features = [ "deflate" ] }
+web-sys = { version = "0.3.77", features = ["Window", "Element", "Document", "AudioContext", "WebGl2RenderingContext", "HtmlCanvasElement", "CanvasRenderingContext2d", "console", "AudioBufferSourceNode", "AudioBuffer", "AudioDestinationNode", "AudioContextState", "Performance", "WebGlContextAttributes"] }
+bevy = "0.15.3"
+console_error_panic_hook = "0.1.7"
+console_log = "1.0.0"
+wasm-bindgen-futures = "0.4.50"
+wasm-bindgen = "0.2.100"
 
 
 
-#[lib]
-#crate-type = ["cdylib", "rlib"]
+[lib]
+crate-type = ["cdylib", "rlib"]
 
