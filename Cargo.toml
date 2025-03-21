@@ -10,8 +10,8 @@ repository = ""
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
 log = "0.4.26"
 kira = "0.10.4"
-macroquad ="0.4.13"
 zip = { version = "2.4.1" , default-features = false, features = [ "deflate" ] }
+raylib = "5.0.2"
 
 
 

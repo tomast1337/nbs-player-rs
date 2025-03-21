@@ -1,12 +1,6 @@
 use std::collections::HashMap;
 
-use macroquad::{
-    color,
-    math::Vec2,
-    shapes::draw_rectangle,
-    text::{TextParams, draw_text_ex, measure_text},
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
-};
+use raylib::prelude::*;
 
 #[derive(Debug)]
 pub struct PianoProps {
@@ -216,10 +210,12 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
 }
 
 pub fn draw_piano_keys(
+    d: &mut RaylibDrawHandle<'_>,
     window_width: f32,
     window_height: f32,
     all_keys: &Vec<PianoKey>,
     piano_props: &PianoProps,
+    font: &Font,
 ) {
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
@@ -235,17 +231,15 @@ pub fn draw_piano_keys(
     let piano_x = (window_width - total_width) / 2.0;
     let piano_y = window_height - white_key_height;
 
-    let font = crate::font::FONT.get().unwrap();
-    let max_font_size = 18;
-    let min_font_size = 8;
+    let min_font_size = 16.;
 
-    // draw a background for the piano
-    draw_rectangle(
-        (window_width - total_width) / 2.0,
-        window_height - white_key_height,
-        total_width,
-        white_key_height,
-        color::BLACK,
+    // Draw a background for the piano
+    d.draw_rectangle(
+        piano_x as i32,
+        piano_y as i32,
+        total_width as i32,
+        white_key_height as i32,
+        Color::BLACK,
     );
 
     for (i, key) in all_keys.iter().enumerate() {
@@ -260,7 +254,7 @@ pub fn draw_piano_keys(
                         white_key_width,
                         white_key_height,
                         white_key_texture,
-                        color::BLACK,
+                        Color::BLACK,
                     )
                 }
                 (false, Some(white_idx)) => {
@@ -272,52 +266,69 @@ pub fn draw_piano_keys(
                         black_key_width,
                         black_key_height,
                         black_key_texture,
-                        color::WHITE,
+                        Color::WHITE,
                     )
                 }
                 _ => continue,
             };
 
         // Draw key with texture
-        draw_texture_ex(
+        d.draw_texture_pro(
             texture,
-            x_pos,
-            y_pos,
-            color::WHITE,
-            DrawTextureParams {
-                dest_size: Some(Vec2::new(width, height)),
-                ..Default::default()
-            },
+            Rectangle::new(0.0, 0.0, texture.width as f32, texture.height as f32),
+            Rectangle::new(x_pos, y_pos, width, height),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            Color::WHITE,
         );
 
         // Calculate font size to fit within the key
-        let mut font_size = max_font_size;
-        let mut text_width = measure_text(&key.label, Some(font), font_size, 1.0).width;
-        while text_width > width - 5.0 && font_size > min_font_size {
-            font_size -= 1;
-            text_width = measure_text(&key.label, Some(font), font_size, 1.0).width;
+        let mut font_size = min_font_size;
+        let mut text_width;
+        let mut text_height;
+
+        loop {
+            let size = font.measure_text(&key.label, font_size, 0.);
+            text_width = size.x;
+            text_height = size.y;
+
+            if text_width <= width && text_height <= height {
+                break;
+            }
+
+            font_size -= 2.;
+
+            if font_size < min_font_size {
+                font_size = min_font_size;
+                break;
+            }
         }
 
-        // Center text horizontally within the key
+        // Center text horizontally and vertically within the key
         let text_x = x_pos + (width - text_width) / 2.0;
+        // the bottom 4th
+        let text_y = y_pos + (height - text_height) / 2.0 + (height / 4.0);
 
-        // Draw label
-        draw_text_ex(
+        d.draw_text_pro(
+            &font,
             &key.label,
-            text_x,
-            y_pos + height - height * 0.25,
-            TextParams {
-                font: Some(font),
-                font_size,
-                color: text_color,
-                ..Default::default()
-            },
+            Vector2::new(text_x, text_y),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            font_size,
+            0.,
+            text_color,
         );
     }
 }
 
-pub fn initialize_piano_dimensions(window_width: f32, all_keys: &Vec<PianoKey>) -> PianoProps {
-    let (white_key_texture, black_key_texture) = load_piano_key_textures();
+pub fn initialize_piano_dimensions(
+    window_width: f32,
+    all_keys: &Vec<PianoKey>,
+    mut rl: &mut raylib::RaylibHandle,
+    thread: &raylib::RaylibThread,
+) -> PianoProps {
+    let (white_key_texture, black_key_texture) = load_piano_key_textures(&mut rl, &thread);
 
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
@@ -342,18 +353,27 @@ pub fn initialize_piano_dimensions(window_width: f32, all_keys: &Vec<PianoKey>) 
     }
 }
 
-pub fn load_piano_key_textures() -> (Texture2D, Texture2D) {
-    let (key_black_bytes, key_white_bytes) = (
-        include_bytes!("../assets/textures/key_black.png"),
-        include_bytes!("../assets/textures/key_white.png"),
-    );
-    let (key_black_image, key_white_image) = (
-        Texture2D::from_file_with_format(key_black_bytes, None),
-        Texture2D::from_file_with_format(key_white_bytes, None),
-    );
+fn load_piano_key_textures(
+    rl: &mut raylib::RaylibHandle,
+    thread: &raylib::RaylibThread,
+) -> (Texture2D, Texture2D) {
+    let key_black_bytes = include_bytes!("../assets/textures/key_black.png");
+    let key_white_bytes = include_bytes!("../assets/textures/key_white.png");
 
-    key_black_image.set_filter(macroquad::texture::FilterMode::Nearest);
-    key_white_image.set_filter(macroquad::texture::FilterMode::Nearest);
+    let key_white_image =
+        raylib::texture::Image::load_image_from_mem(".png", key_white_bytes).unwrap();
+    let key_black_image =
+        raylib::texture::Image::load_image_from_mem(".png", key_black_bytes).unwrap();
 
-    (key_white_image, key_black_image)
+    let key_white_texture = rl
+        .load_texture_from_image(thread, &key_white_image)
+        .unwrap();
+    let key_black_texture = rl
+        .load_texture_from_image(thread, &key_black_image)
+        .unwrap();
+
+    key_white_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
+    key_black_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
+
+    (key_white_texture, key_black_texture)
 }

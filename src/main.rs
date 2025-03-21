@@ -1,10 +1,6 @@
-use macroquad::{
-    self, color,
-    input::{KeyCode, MouseButton, is_key_pressed, is_mouse_button_pressed},
-    text::{TextParams, draw_text_ex, load_ttf_font_from_bytes, measure_text},
-    time::{get_fps, get_frame_time},
-    window::{self, clear_background, request_new_screen_size},
-};
+extern crate raylib;
+
+use raylib::prelude::*;
 use utils::time_formatter;
 
 mod audio;
@@ -14,12 +10,22 @@ mod piano;
 mod song;
 mod utils;
 
-#[macroquad::main("BasicShapes")]
-async fn main() {
-    let mut window_width = 1280.;
-    let mut window_height = 720.;
+fn logger_callback(level: TraceLogLevel, text: &str) {
+    match level {
+        TraceLogLevel::LOG_ALL => log::trace!("{}", text),
+        TraceLogLevel::LOG_TRACE => log::trace!("{}", text),
+        TraceLogLevel::LOG_DEBUG => log::debug!("{}", text),
+        TraceLogLevel::LOG_INFO => log::info!("{}", text),
+        TraceLogLevel::LOG_WARNING => log::warn!("{}", text),
+        TraceLogLevel::LOG_ERROR => log::error!("{}", text),
+        TraceLogLevel::LOG_FATAL => log::error!("{}", text),
+        TraceLogLevel::LOG_NONE => {}
+    }
+}
 
-    request_new_screen_size(window_width, window_height);
+fn main() {
+    let mut window_width = 1280;
+    let mut window_height = 720;
 
     let nbs_data = song::load_nbs_file(None);
 
@@ -38,16 +44,24 @@ async fn main() {
     let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
     let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
+    let (mut rl, thread) = raylib::init()
+        .size(window_width as i32, window_height as i32)
+        .title(&title)
+        .resizable()
+        .build();
+    rl.set_trace_log_callback(logger_callback).unwrap();
+
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
     let mut piano_props;
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
-
-    let note_texture = note::load_note_texture();
-    note_texture.set_filter(macroquad::texture::FilterMode::Nearest);
+    println!("Loaded note blocks");
+    println!("Loaded {} notes", note_blocks.len());
+    let note_texture = note::load_note_texture(&mut rl, &thread);
 
     let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
+    println!("Loaded audio engine");
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time: f32 = 0.; // Elapsed time in seconds
 
@@ -60,31 +74,32 @@ async fn main() {
 
     let mut is_paused: bool = true;
 
-    let font_data = include_bytes!("../assets/fonts/Monocraft.ttf");
-    let mut font = load_ttf_font_from_bytes(font_data).unwrap();
-    font.set_filter(macroquad::texture::FilterMode::Nearest);
-    crate::font::FONT.set(font.clone()).unwrap();
-
-    window_width = window::screen_width();
-    window_height = window::screen_height();
-    piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
+    let font = font::load_fonts(2, &mut rl, &thread);
+    window_width = rl.get_screen_width();
+    window_height = rl.get_screen_height();
+    piano_props =
+        piano::initialize_piano_dimensions(window_width as f32, &all_keys, &mut rl, &thread);
     note_dim = piano_props.white_key_width;
     key_spacing = piano_props.key_spacing;
-
-    loop {
-        if window_width != window::screen_width() {
-            window_width = window::screen_width();
-            piano_props = piano::initialize_piano_dimensions(window_width, &all_keys);
+    while !rl.window_should_close() {
+        if window_width != rl.get_screen_height() {
+            window_width = rl.get_screen_width();
+            piano_props = piano::initialize_piano_dimensions(
+                window_width as f32,
+                &all_keys,
+                &mut rl,
+                &thread,
+            );
             note_dim = piano_props.white_key_width;
             key_spacing = piano_props.key_spacing;
         }
-        if window_height != window::screen_height() {
-            window_height = window::screen_height();
+        if window_height != rl.get_screen_height() {
+            window_height = rl.get_screen_height();
         }
 
-        let delta_time = get_frame_time();
+        let delta_time = rl.get_frame_time();
 
-        if is_key_pressed(KeyCode::Space) || is_mouse_button_pressed(MouseButton::Left) {
+        if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
             if elapsed_time >= total_duration {
                 elapsed_time = 0.;
                 played_ticks = vec![false; nbs_file.header.song_length as usize];
@@ -98,7 +113,7 @@ async fn main() {
         if !is_paused && elapsed_time < total_duration {
             elapsed_time += delta_time;
         }
-        clear_background(color::SKYBLUE);
+        //clear_background(color::SKYBLUE);
 
         current_tick = elapsed_time * notes_per_second;
 
@@ -127,11 +142,16 @@ async fn main() {
                 }
             }
         }
+        let mut d = rl.begin_drawing(&thread);
+        d.clear_background(Color::SKYBLUE);
 
         // Draw notes
-        let notes_rendered = note::draw_notes(
-            window_width,
-            window_height,
+        let notes_rendered = 0;
+
+        note::draw_notes(
+            &mut d,
+            window_width as f32,
+            window_height as f32,
             &all_keys,
             &key_map,
             &note_blocks,
@@ -145,24 +165,30 @@ async fn main() {
 
         // Update and draw piano keys
         piano::update_key_animation(&mut all_keys, delta_time);
-        piano::draw_piano_keys(window_width, window_height, &all_keys, &piano_props);
+        piano::draw_piano_keys(
+            &mut d,
+            window_width as f32,
+            window_height as f32,
+            &all_keys,
+            &piano_props,
+            &font,
+        );
 
         // Calculate font size based on screen width with min and max limits
-        let min_font_size = 20;
-        let max_font_size = 40;
-        let font_size =
-            (window_width / 64.0).clamp(min_font_size as f32, max_font_size as f32) as u16;
+        let min_font_size = 18.;
+        let max_font_size = 40.;
+        let font_size = (window_width as f32 / 64.0).clamp(min_font_size, max_font_size as f32);
 
         // Define text positions
         let start_x = 10.0;
-        let mut start_y = 30.0;
-        let line_height = 20.0; // Space between lines
+        let mut start_y = 10.0;
+        let line_height = font.measure_text(&title, font_size, 0.0).y;
 
         // Define text color
-        let text_color = color::BLACK;
+        let text_color = Color::BLACK;
 
         // Draw song status
-        let fps = get_fps();
+
         let current_tick_text = format!("Current Tick: {:.4}", current_tick);
         let notes_rendered_text = format!("Notes Rendered: {}", notes_rendered);
         let duration_text = format!(
@@ -170,106 +196,110 @@ async fn main() {
             time_formatter(elapsed_time),
             time_formatter(total_duration)
         );
-
-        let text_parameters = TextParams {
-            font_size,
-            font: Some(&font),
-            color: text_color,
-            font_scale: 0.5,
-            ..Default::default()
-        };
-
-        // Draw title
-        draw_text_ex(&title, start_x, start_y, text_parameters.clone());
-
+        d.draw_text_pro(
+            &font,
+            &title,
+            Vector2::new(start_x, start_y),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            font_size as f32,
+            0.,
+            text_color,
+        );
         // Draw duration
         start_y += line_height;
-        draw_text_ex(&duration_text, start_x, start_y, text_parameters.clone());
+        d.draw_text_pro(
+            &font,
+            &duration_text,
+            Vector2::new(start_x, start_y),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            font_size,
+            0.,
+            text_color,
+        );
 
         // Draw notes rendered
         start_y += line_height;
-        draw_text_ex(
+        d.draw_text_pro(
+            &font,
             &notes_rendered_text,
-            start_x,
-            start_y,
-            text_parameters.clone(),
+            Vector2::new(start_x, start_y),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            font_size,
+            0.,
+            text_color,
         );
 
-        // Draw current tick
         start_y += line_height;
-        draw_text_ex(
+        d.draw_text_pro(
+            &font,
             &current_tick_text,
-            start_x,
-            start_y,
-            text_parameters.clone(),
+            Vector2::new(start_x, start_y),
+            Vector2::new(0.0, 0.0),
+            0.0,
+            font_size,
+            0.,
+            text_color,
         );
 
         // Draw FPS in the top-right corner
-        let fps_text = format!("FPS: {:.2}", fps);
-        let fps_text_width = measure_text(&fps_text, Some(&font), font_size, 1.0).width;
-        draw_text_ex(
-            &fps_text,
-            window_width - fps_text_width - 10.0, // 10.0 padding from the right edge
-            15.0,
-            text_parameters.clone(),
-        );
+        d.draw_fps(window_width as i32 - 100, 10);
 
         let is_end = elapsed_time >= total_duration;
 
         // Draw pause state
         if is_paused && !is_end {
-            draw_text_ex(
+            d.draw_text_pro(
+                &font,
                 "Paused",
-                window_width / 2. - 50.,
-                window_height / 2.,
-                TextParams {
-                    font_size: 40,
-                    font: Some(&font),
-                    color: color::RED,
-                    ..Default::default()
-                },
+                Vector2::new(window_width as f32 / 2. - 50., window_height as f32 / 2.),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                font_size,
+                0.,
+                Color::RED,
             );
         }
 
         if is_end {
-            draw_text_ex(
+            d.draw_text_pro(
+                &font,
                 "End of Song",
-                window_width / 2. - 50.,
-                window_height / 2.,
-                TextParams {
-                    font_size: 40,
-                    font: Some(&font),
-                    color: color::RED,
-                    ..Default::default()
-                },
+                Vector2::new(window_width as f32 / 2. - 50., window_height as f32 / 2.),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                font_size,
+                0.,
+                Color::RED,
             );
-            // draw title
-            draw_text_ex(
+            d.draw_text_pro(
+                &font,
                 &title,
-                window_width / 2. - 50.,
-                window_height / 2. + 50.,
-                TextParams {
-                    font_size: 20,
-                    font: Some(&font),
-                    color: color::BLACK,
-                    ..Default::default()
-                },
+                Vector2::new(
+                    window_width as f32 / 2. - 50.,
+                    window_height as f32 / 2. + 50.,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                font_size as f32,
+                0.,
+                Color::BLACK,
             );
-
-            // draw press space to restart
-            draw_text_ex(
+            d.draw_text_pro(
+                &font,
                 "Press Space to Restart",
-                window_width / 2. - 50.,
-                window_height / 2. + 100.,
-                TextParams {
-                    font_size: 20,
-                    font: Some(&font),
-                    color: color::BLACK,
-                    ..Default::default()
-                },
+                Vector2::new(
+                    window_width as f32 / 2. - 50.,
+                    window_height as f32 / 2. + 100.,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                font_size,
+                0.,
+                Color::BLACK,
             );
         }
-
-        window::next_frame().await
     }
 }

@@ -1,18 +1,18 @@
 use std::collections::HashMap;
 
-use macroquad::{
-    color::{self, Color},
-    math::{Rect, Vec2},
-    text::{TextParams, draw_text_ex, measure_text},
-    texture::{DrawTextureParams, Texture2D, draw_texture_ex},
-};
 use nbs_rs;
+use raylib::prelude::*;
 
 use crate::piano;
 
-pub fn load_note_texture() -> Texture2D {
+pub fn load_note_texture(
+    rl: &mut raylib::RaylibHandle,
+    thread: &raylib::RaylibThread,
+) -> Texture2D {
     let note_image_bytes = include_bytes!("../assets/textures/note_block.png");
-    let note_texture = Texture2D::from_file_with_format(note_image_bytes, None);
+    let note_image = raylib::texture::Image::load_image_from_mem(".png", note_image_bytes).unwrap();
+    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
+    note_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
     note_texture
 }
 
@@ -114,9 +114,8 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
     for (id, color) in instrument_color_palette.iter() {
         // remove the # from the color string
         let color_str = &color[1..];
-        let hex = u32::from_str_radix(color_str, 16).unwrap();
-        let mut color = Color::from_hex(hex);
-        color.a = 0.90;
+        let mut color = Color::from_hex(color_str).unwrap();
+        color.a = (255. * 0.90) as u8; // Set alpha to 0.90
         instrument_colors.insert(*id, color);
     }
 
@@ -124,14 +123,11 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
 
     // add 100 more colors to the palette following hue wheel
     for i in 0..100 {
-        let h = i as f64 * 3.6; // Spread colors evenly on the hue wheel
-        let s = 1.0;
-        let l = 0.5;
+        let hue = i as f32 * 3.6; // Spread colors evenly on the hue wheel
+        let saturation = 1.0;
+        let value = 1.0;
 
-        let (r, g, b) = hsl_to_rgb(h, s, l);
-
-        let color = Color::new(r as f32 / 255.0, g as f32 / 255.0, b as f32 / 255.0, 0.90);
-
+        let color = Color::color_from_hsv(hue, saturation, value);
         instrument_colors.insert((i + initial_palette_size) as u8, color);
     }
 
@@ -139,6 +135,7 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
 }
 
 pub fn draw_notes(
+    d: &mut RaylibDrawHandle<'_>,
     window_width: f32,
     window_height: f32,
     all_keys: &Vec<piano::PianoKey>,
@@ -150,6 +147,7 @@ pub fn draw_notes(
     note_dim: f32,
     key_spacing: f32,
     instrument_colors: &HashMap<u8, Color>,
+    // font: impl AsRef<ffi::Font>,
 ) -> i32 {
     let sliding_window_size = (window_height / note_dim) as i32 + 2;
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
@@ -162,7 +160,19 @@ pub fn draw_notes(
     // Count notes being rendered
     let mut notes_rendered = 0;
 
-    let font = crate::font::FONT.get().unwrap();
+    // Calculate font size to fit within the note block
+    let max_font_size = 20; // Maximum font size
+    let min_font_size = 8; // Minimum font size
+    let mut font_size = max_font_size;
+
+    // Measure text width and height
+    let mut text_width = d.measure_text("####", font_size);
+
+    // Adjust font size if the text is too large
+    while (text_width as f32 > note_dim - 5.) && font_size > min_font_size {
+        font_size -= 1;
+        text_width = d.measure_text("####", font_size);
+    }
 
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;
@@ -184,7 +194,7 @@ pub fn draw_notes(
 
                     // Check if the note is visible on the screen
                     if y_pos + note_dim > min_y && y_pos < max_y {
-                        let note_rect = Rect::new(
+                        let note_rect = Rectangle::new(
                             x_pos + window_width / 2.0 - note_dim / 2.0,
                             y_pos,
                             note_dim,
@@ -194,62 +204,44 @@ pub fn draw_notes(
                         // Get note color by the instrument index
                         let mut color = match instrument_colors.get(&note.instrument) {
                             Some(&color) => color,
-                            None => color::WHITE,
+                            None => Color::WHITE,
                         }
                         .clone();
 
-                        color.a = 0.90;
+                        // convet note.velocity  0-100 to 0-255
+                        color =
+                            color.alpha(((note.velocity as f32 / 100.0) * 255.0).round() as f32);
 
                         // Draw the note texture
-                        draw_texture_ex(
+                        d.draw_texture_pro(
                             note_texture,
-                            note_rect.x,
-                            note_rect.y,
+                            Rectangle::new(
+                                0.0,
+                                0.0,
+                                note_texture.width as f32,
+                                note_texture.height as f32,
+                            ),
+                            Rectangle::new(
+                                note_rect.x,
+                                note_rect.y,
+                                note_rect.width,
+                                note_rect.height,
+                            ),
+                            Vector2::new(0.0, 0.0),
+                            0.0,
                             color,
-                            DrawTextureParams {
-                                dest_size: Some(Vec2::new(note_rect.w as f32, note_rect.h as f32)),
-                                ..Default::default()
-                            },
                         );
 
                         // Draw the tone (note name) on the note
                         let text = &piano_key.label;
 
-                        // Calculate font size to fit within the note block
-                        let max_font_size = 20; // Maximum font size
-                        let min_font_size = 8; // Minimum font size
-                        let mut font_size = max_font_size;
-
-                        // Measure text width and height
-                        let mut text_width = measure_text(text, Some(&font), font_size, 1.0).width;
-                        let mut text_height =
-                            measure_text(text, Some(&font), font_size, 1.0).height;
-
-                        // Adjust font size if the text is too large
-                        while (text_width > note_rect.w - 5. || text_height > note_rect.h - 5.)
-                            && font_size > min_font_size
-                        {
-                            font_size -= 1;
-                            text_width = measure_text(text, Some(&font), font_size, 1.0).width;
-                            text_height = measure_text(text, Some(&font), font_size, 1.0).height;
-                        }
-
                         // Center text horizontally and vertically within the note block
-                        let text_x = note_rect.x + (note_rect.w - text_width) / 2.0;
-                        let text_y = note_rect.y + (note_rect.h) / 2.0;
+                        let text_x =
+                            (note_rect.x + (note_rect.width - text_width as f32) / 2.0) as i32;
+                        let text_y = (note_rect.y + (note_rect.height) / 2.0) as i32;
 
                         // Draw the text
-                        draw_text_ex(
-                            text,
-                            text_x,
-                            text_y,
-                            TextParams {
-                                font: Some(&font),
-                                font_size,
-                                color: color::WHITE,
-                                ..Default::default()
-                            },
-                        );
+                        d.draw_text(text, text_x, text_y, font_size, Color::WHITE);
 
                         // Increment notes rendered count
                         notes_rendered += 1;
