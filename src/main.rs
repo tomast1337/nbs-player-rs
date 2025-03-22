@@ -8,20 +8,8 @@ mod font;
 mod note;
 mod piano;
 mod song;
+mod textures;
 mod utils;
-
-fn logger_callback(level: TraceLogLevel, text: &str) {
-    match level {
-        TraceLogLevel::LOG_ALL => log::trace!("{}", text),
-        TraceLogLevel::LOG_TRACE => log::trace!("{}", text),
-        TraceLogLevel::LOG_DEBUG => log::debug!("{}", text),
-        TraceLogLevel::LOG_INFO => log::info!("{}", text),
-        TraceLogLevel::LOG_WARNING => log::warn!("{}", text),
-        TraceLogLevel::LOG_ERROR => log::error!("{}", text),
-        TraceLogLevel::LOG_FATAL => log::error!("{}", text),
-        TraceLogLevel::LOG_NONE => {}
-    }
-}
 
 fn main() {
     let mut window_width = 1280.;
@@ -35,7 +23,7 @@ fn main() {
     if extra_sounds.len() == 0 {
         log::warn!("No extra sounds loaded");
     } else {
-        println!("{:?}", nbs_file.instruments);
+        log::warn!("{:?}", nbs_file.instruments);
     }
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
@@ -49,19 +37,21 @@ fn main() {
         .title(&title)
         .resizable()
         .build();
-    rl.set_trace_log_callback(logger_callback).unwrap();
+    rl.set_trace_log_callback(utils::logger_callback).unwrap();
     rl.set_target_fps(60);
+
+    let textures = textures::load_textures(&mut rl, &thread);
+
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
     let mut piano_props;
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
-    println!("Loaded note blocks");
-    println!("Loaded {} notes", note_blocks.len());
-    let note_texture = note::load_note_texture(&mut rl, &thread);
+    log::debug!("Loaded note blocks");
+    log::debug!("Loaded {} notes", note_blocks.len());
 
     let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
-    println!("Loaded audio engine");
+    log::debug!("Loaded audio engine");
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time: f32 = 0.; // Elapsed time in seconds
 
@@ -74,10 +64,11 @@ fn main() {
 
     let mut is_paused: bool = true;
 
-    let font = font::load_fonts(4, &mut rl, &thread);
+    let font = font::load_fonts(0, &mut rl, &thread);
     window_width = rl.get_screen_width() as f32;
     window_height = rl.get_screen_height() as f32;
-    piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, &mut rl, &thread);
+    piano_props =
+        piano::initialize_piano_dimensions(window_width, &all_keys, &font, &mut rl, &thread);
     note_dim = piano_props.white_key_width;
     key_spacing = piano_props.key_spacing;
 
@@ -92,8 +83,14 @@ fn main() {
     let button_size = Vector2::new(40.0, 40.0); // Size of play/pause and reset buttons
     let volume_button_size = Vector2::new(30.0, 30.0); // Size of volume buttons
     let timeline_height = 10.0; // Height of the timeline slider
+    let mut toggle_fullscreen = false; // Fullscreen state
 
     while !rl.window_should_close() {
+        if toggle_fullscreen {
+            rl.toggle_fullscreen();
+            toggle_fullscreen = false;
+        }
+
         update_window_dimensions(
             &mut window_width,
             &mut window_height,
@@ -103,6 +100,7 @@ fn main() {
             &mut piano_props,
             &mut note_dim,
             &mut key_spacing,
+            &font,
         );
 
         let delta_time = rl.get_frame_time();
@@ -159,10 +157,11 @@ fn main() {
 
         if sec_since_last_mouse_move < controls_close_time {
             // Slide the panel up (show)
-            controls_panel_y = lerp(controls_panel_y, window_height - control_panel_height, 0.2);
+            controls_panel_y =
+                utils::lerp(controls_panel_y, window_height - control_panel_height, 0.2);
         } else {
             // Slide the panel down (hide)
-            controls_panel_y = lerp(controls_panel_y, window_height, 0.2);
+            controls_panel_y = utils::lerp(controls_panel_y, window_height, 0.2);
         }
 
         let mut d = rl.begin_drawing(&thread);
@@ -177,11 +176,12 @@ fn main() {
             &key_map,
             &note_blocks,
             &piano_props,
-            &note_texture,
+            &textures.note_texture,
             current_tick,
             note_dim,
             key_spacing,
             &instrument_colors,
+            &font,
         );
         // Update and draw piano keys
         piano::update_key_animation(&mut all_keys, delta_time);
@@ -191,7 +191,7 @@ fn main() {
             window_height,
             &all_keys,
             &piano_props,
-            &font,
+            &textures.piano_key_texture,
         );
 
         // Calculate font size based on screen width with min and max limits
@@ -213,7 +213,7 @@ fn main() {
 
         // Draw pause state
         if is_paused && !is_end {
-            draw_pause_message(window_width, window_height, &font, &mut d, font_size);
+            draw_pause_message(window_width, window_height, &textures, &mut d);
         }
 
         if is_end {
@@ -230,7 +230,7 @@ fn main() {
         {
             let control_panel_rect =
                 Rectangle::new(0.0, controls_panel_y, window_width, control_panel_height);
-            d.draw_rectangle_rec(control_panel_rect, Color::DARKGRAY);
+            d.draw_rectangle_rec(control_panel_rect, Color::BLACK.alpha(0.7));
 
             // Draw the play/pause button
             let play_pause_button_rect = Rectangle::new(
@@ -239,13 +239,27 @@ fn main() {
                 button_size.x,
                 button_size.y,
             );
-            d.draw_rectangle_rec(play_pause_button_rect, Color::LIGHTGRAY);
-            d.draw_text(
-                if is_paused { ">" } else { "||" },
-                play_pause_button_rect.x as i32 + 10,
-                play_pause_button_rect.y as i32 + 10,
-                20,
-                Color::BLACK,
+            d.draw_texture_pro(
+                if is_paused {
+                    &textures.play_button
+                } else {
+                    &textures.pause_button
+                },
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.play_button.width as f32,
+                    textures.play_button.height as f32,
+                ),
+                Rectangle::new(
+                    play_pause_button_rect.x,
+                    play_pause_button_rect.y,
+                    play_pause_button_rect.width,
+                    play_pause_button_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
             );
 
             // Draw the reset button
@@ -255,13 +269,23 @@ fn main() {
                 button_size.x,
                 button_size.y,
             );
-            d.draw_rectangle_rec(reset_button_rect, Color::LIGHTGRAY);
-            d.draw_text(
-                "o",
-                reset_button_rect.x as i32 + 10,
-                reset_button_rect.y as i32 + 10,
-                20,
-                Color::BLACK,
+            d.draw_texture_pro(
+                &textures.reset_button,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.reset_button.width as f32,
+                    textures.reset_button.height as f32,
+                ),
+                Rectangle::new(
+                    reset_button_rect.x,
+                    reset_button_rect.y,
+                    reset_button_rect.width,
+                    reset_button_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
             );
 
             let space_from_buttons = button_size.x * 3.0 + 10.0;
@@ -285,6 +309,32 @@ fn main() {
             );
             d.draw_rectangle_rec(progress_rect, Color::BLUE);
 
+            // draw the timeline pill
+            let timeline_pill_rect = Rectangle::new(
+                timeline_rect.x + progress_width - 5.0,
+                timeline_rect.y - 5.0,
+                timeline_rect.height + 10.0,
+                timeline_rect.height + 10.0,
+            );
+            d.draw_texture_pro(
+                &textures.timeline_pill,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.timeline_pill.width as f32,
+                    textures.timeline_pill.height as f32,
+                ),
+                Rectangle::new(
+                    timeline_pill_rect.x,
+                    timeline_pill_rect.y,
+                    timeline_pill_rect.width,
+                    timeline_pill_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
+            );
+
             // Draw the volume controls
             let volume_plus_rect = Rectangle::new(
                 space_from_buttons + 20.0 + timeline_rect.width,
@@ -292,13 +342,23 @@ fn main() {
                 volume_button_size.x,
                 volume_button_size.y,
             );
-            d.draw_rectangle_rec(volume_plus_rect, Color::LIGHTGRAY);
-            d.draw_text(
-                "+",
-                volume_plus_rect.x as i32 + 10,
-                volume_plus_rect.y as i32 + 5,
-                20,
-                Color::BLACK,
+            d.draw_texture_pro(
+                &textures.volume_plus_button,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.volume_plus_button.width as f32,
+                    textures.volume_plus_button.height as f32,
+                ),
+                Rectangle::new(
+                    volume_plus_rect.x,
+                    volume_plus_rect.y,
+                    volume_plus_rect.width,
+                    volume_plus_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
             );
 
             let volume_minus_rect = Rectangle::new(
@@ -307,13 +367,23 @@ fn main() {
                 volume_button_size.x,
                 volume_button_size.y,
             );
-            d.draw_rectangle_rec(volume_minus_rect, Color::LIGHTGRAY);
-            d.draw_text(
-                "-",
-                volume_minus_rect.x as i32 + 10,
-                volume_minus_rect.y as i32 + 5,
-                20,
-                Color::BLACK,
+            d.draw_texture_pro(
+                &textures.volume_minus_button,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.volume_minus_button.width as f32,
+                    textures.volume_minus_button.height as f32,
+                ),
+                Rectangle::new(
+                    volume_minus_rect.x,
+                    volume_minus_rect.y,
+                    volume_minus_rect.width,
+                    volume_minus_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
             );
 
             // fullscreen button
@@ -323,13 +393,23 @@ fn main() {
                 volume_button_size.x,
                 volume_button_size.y,
             );
-            d.draw_rectangle_rec(fullscreen_button_rect, Color::LIGHTGRAY);
-            d.draw_text(
-                "F",
-                fullscreen_button_rect.x as i32 + 10,
-                fullscreen_button_rect.y as i32 + 5,
-                20,
-                Color::BLACK,
+            d.draw_texture_pro(
+                &textures.fullscreen_button,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    textures.fullscreen_button.width as f32,
+                    textures.fullscreen_button.height as f32,
+                ),
+                Rectangle::new(
+                    fullscreen_button_rect.x,
+                    fullscreen_button_rect.y,
+                    fullscreen_button_rect.width,
+                    fullscreen_button_rect.height,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                Color::WHITE,
             );
             // Check for button clicks
             if d.is_mouse_button_pressed(raylib::consts::MouseButton::MOUSE_BUTTON_LEFT) {
@@ -383,7 +463,7 @@ fn main() {
 
                 // Check if the fullscreen button was clicked
                 if fullscreen_button_rect.check_collision_point_rec(mouse_pos) {
-                    // TODO:
+                    toggle_fullscreen = !toggle_fullscreen;
                 }
             }
 
@@ -411,38 +491,43 @@ fn main() {
                 time_formatter(elapsed_time),
                 time_formatter(total_duration)
             );
-            d.draw_text(
+            d.draw_text_pro(
+                &font,
                 &current_time_text,
-                timeline_rect.x as i32,
-                (timeline_rect.y - 20.0) as i32,
-                20,
+                Vector2::new(timeline_rect.x, timeline_rect.y - 25.),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                font_size,
+                0.,
                 Color::WHITE,
             );
         }
     }
 }
 
-/// Linear interpolation function for smooth animation
-fn lerp(start: f32, end: f32, t: f32) -> f32 {
-    start + (end - start) * t
-}
-
 fn draw_pause_message(
     window_width: f32,
     window_height: f32,
-    font: &Font,
+    textures: &textures::Textures,
     d: &mut RaylibDrawHandle<'_>,
-    font_size: f32,
 ) {
-    d.draw_text_pro(
-        font,
-        "Paused",
-        Vector2::new(window_width / 2. - 50., window_height / 2.),
+    d.draw_texture_pro(
+        &textures.play_button,
+        Rectangle::new(
+            0.0,
+            0.0,
+            textures.play_button.width as f32,
+            textures.play_button.height as f32,
+        ),
+        Rectangle::new(
+            window_width / 2. - 50.,
+            window_height / 2. - 50.,
+            100.,
+            100.,
+        ),
         Vector2::new(0.0, 0.0),
         0.0,
-        font_size,
-        0.,
-        Color::RED,
+        Color::WHITE,
     );
 }
 
@@ -573,19 +658,21 @@ fn reset_key_press_states(all_keys: &mut Vec<piano::PianoKey>) {
     }
 }
 
-fn update_window_dimensions(
+fn update_window_dimensions<'a>(
     window_width: &mut f32,
     window_height: &mut f32,
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
     all_keys: &Vec<piano::PianoKey>,
-    piano_props: &mut piano::PianoProps,
+    piano_props: &mut piano::PianoProps<'a>,
     note_dim: &mut f32,
     key_spacing: &mut f32,
+    font: &'a Font,
 ) {
     if *window_width as i32 != rl.get_screen_height() {
         *window_width = rl.get_screen_width() as f32;
-        *piano_props = piano::initialize_piano_dimensions(*window_width, all_keys, rl, thread);
+        *piano_props =
+            piano::initialize_piano_dimensions(*window_width, all_keys, font, rl, thread);
         *note_dim = piano_props.white_key_width;
         *key_spacing = piano_props.key_spacing;
     }
