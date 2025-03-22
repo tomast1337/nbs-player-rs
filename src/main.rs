@@ -74,7 +74,7 @@ fn main() {
 
     let mut is_paused: bool = true;
 
-    let font = font::load_fonts(2, &mut rl, &thread);
+    let font = font::load_fonts(4, &mut rl, &thread);
     window_width = rl.get_screen_width();
     window_height = rl.get_screen_height();
     piano_props =
