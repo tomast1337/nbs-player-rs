@@ -50,7 +50,7 @@ fn main() {
         .resizable()
         .build();
     rl.set_trace_log_callback(logger_callback).unwrap();
-
+    rl.set_target_fps(60);
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
     let mut piano_props;
@@ -146,9 +146,7 @@ fn main() {
         d.clear_background(Color::SKYBLUE);
 
         // Draw notes
-        let notes_rendered = 0;
-
-        note::draw_notes(
+        let notes_rendered = note::draw_notes(
             &mut d,
             window_width as f32,
             window_height as f32,
@@ -283,7 +281,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                font_size as f32,
+                font_size,
                 0.,
                 Color::BLACK,
             );
