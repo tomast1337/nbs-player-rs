@@ -10,7 +10,6 @@ pub struct Textures {
     pub volume_minus_button: Texture2D,
     pub fullscreen_button: Texture2D,
     pub timeline_pill: Texture2D,
-    pub controls_background: Texture2D,
 }
 
 fn load_from_mem(
@@ -88,15 +87,7 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
         ".png",
     );
 
-    let controls_background = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/controls_background.png"),
-        ".png",
-    );
-
     Textures {
-        controls_background,
         note_texture,
         piano_key_texture,
         play_button,

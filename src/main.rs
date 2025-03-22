@@ -9,6 +9,7 @@ mod note;
 mod piano;
 mod song;
 mod textures;
+mod theme;
 mod utils;
 
 fn main() {
@@ -41,6 +42,7 @@ fn main() {
     rl.set_target_fps(60);
 
     let textures = textures::load_textures(&mut rl, &thread);
+    let theme = theme::Theme::default();
 
     let (mut all_keys, key_map) = piano::generate_piano_keys();
 
@@ -67,8 +69,7 @@ fn main() {
     let font = font::load_fonts(0, &mut rl, &thread);
     window_width = rl.get_screen_width() as f32;
     window_height = rl.get_screen_height() as f32;
-    piano_props =
-        piano::initialize_piano_dimensions(window_width, &all_keys, &font, &mut rl, &thread);
+    piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, &font);
     note_dim = piano_props.white_key_width;
     key_spacing = piano_props.key_spacing;
 
@@ -95,7 +96,6 @@ fn main() {
             &mut window_width,
             &mut window_height,
             &mut rl,
-            &thread,
             &all_keys,
             &mut piano_props,
             &mut note_dim,
@@ -165,7 +165,7 @@ fn main() {
         }
 
         let mut d = rl.begin_drawing(&thread);
-        d.clear_background(Color::SKYBLUE);
+        d.clear_background(theme.background_color);
 
         // Draw notes
         let notes_rendered = note::draw_notes(
@@ -192,17 +192,19 @@ fn main() {
             &all_keys,
             &piano_props,
             &textures.piano_key_texture,
+            &theme,
         );
 
         // Calculate font size based on screen width with min and max limits
         let font_size = draw_song_status(
+            &mut d,
+            &theme,
             window_width,
             &title,
             total_duration,
             current_tick,
             elapsed_time,
             &font,
-            &mut d,
             notes_rendered,
         );
 
@@ -213,13 +215,14 @@ fn main() {
 
         // Draw pause state
         if is_paused && !is_end {
-            draw_pause_message(window_width, window_height, &textures, &mut d);
+            draw_pause_message(window_width, window_height, &theme, &textures, &mut d);
         }
 
         if is_end {
             draw_end_message(
                 window_width,
                 window_height,
+                &theme,
                 &title,
                 &font,
                 &mut d,
@@ -259,7 +262,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
 
             // Draw the reset button
@@ -285,7 +288,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
 
             let space_from_buttons = button_size.x * 3.0 + 10.0;
@@ -297,7 +300,7 @@ fn main() {
                 window_width - 2. * space_from_buttons - 20.0,
                 timeline_height,
             );
-            d.draw_rectangle_rec(timeline_rect, Color::GRAY);
+            d.draw_rectangle_rec(timeline_rect, Color::BLACK);
 
             // Draw the current progress on the timeline
             let progress_width = (elapsed_time / total_duration) * timeline_rect.width;
@@ -307,7 +310,7 @@ fn main() {
                 progress_width,
                 timeline_rect.height,
             );
-            d.draw_rectangle_rec(progress_rect, Color::BLUE);
+            d.draw_rectangle_rec(progress_rect, theme.accent_color);
 
             // draw the timeline pill
             let timeline_pill_rect = Rectangle::new(
@@ -332,7 +335,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
 
             // Draw the volume controls
@@ -358,7 +361,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
 
             let volume_minus_rect = Rectangle::new(
@@ -383,7 +386,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
 
             // fullscreen button
@@ -409,7 +412,7 @@ fn main() {
                 ),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                theme.accent_color,
             );
             // Check for button clicks
             if d.is_mouse_button_pressed(raylib::consts::MouseButton::MOUSE_BUTTON_LEFT) {
@@ -499,7 +502,7 @@ fn main() {
                 0.0,
                 font_size,
                 0.,
-                Color::WHITE,
+                theme.text_color,
             );
         }
     }
@@ -508,6 +511,7 @@ fn main() {
 fn draw_pause_message(
     window_width: f32,
     window_height: f32,
+    theme: &theme::Theme,
     textures: &textures::Textures,
     d: &mut RaylibDrawHandle<'_>,
 ) {
@@ -527,13 +531,14 @@ fn draw_pause_message(
         ),
         Vector2::new(0.0, 0.0),
         0.0,
-        Color::WHITE,
+        theme.accent_color,
     );
 }
 
 fn draw_end_message(
     window_width: f32,
     window_height: f32,
+    theme: &theme::Theme,
     title: &String,
     font: &Font,
     d: &mut RaylibDrawHandle<'_>,
@@ -547,7 +552,7 @@ fn draw_end_message(
         0.0,
         font_size,
         0.,
-        Color::RED,
+        theme.accent_color,
     );
     d.draw_text_pro(
         font,
@@ -557,7 +562,7 @@ fn draw_end_message(
         0.0,
         font_size,
         0.,
-        Color::BLACK,
+        theme.accent_color,
     );
     d.draw_text_pro(
         font,
@@ -567,18 +572,19 @@ fn draw_end_message(
         0.0,
         font_size,
         0.,
-        Color::BLACK,
+        theme.accent_color,
     );
 }
 
 fn draw_song_status(
+    d: &mut RaylibDrawHandle<'_>,
+    theme: &theme::Theme,
     window_width: f32,
     title: &String,
     total_duration: f32,
     current_tick: f32,
     elapsed_time: f32,
     font: &Font,
-    d: &mut RaylibDrawHandle<'_>,
     notes_rendered: i32,
 ) -> f32 {
     let min_font_size = 18.;
@@ -591,7 +597,7 @@ fn draw_song_status(
     let line_height = font.measure_text(title, font_size, 0.0).y;
 
     // Define text color
-    let text_color = Color::BLACK;
+    let text_color = theme.text_color;
 
     // Draw song status
 
@@ -662,7 +668,6 @@ fn update_window_dimensions<'a>(
     window_width: &mut f32,
     window_height: &mut f32,
     rl: &mut RaylibHandle,
-    thread: &RaylibThread,
     all_keys: &Vec<piano::PianoKey>,
     piano_props: &mut piano::PianoProps<'a>,
     note_dim: &mut f32,
@@ -671,8 +676,7 @@ fn update_window_dimensions<'a>(
 ) {
     if *window_width as i32 != rl.get_screen_height() {
         *window_width = rl.get_screen_width() as f32;
-        *piano_props =
-            piano::initialize_piano_dimensions(*window_width, all_keys, font, rl, thread);
+        *piano_props = piano::initialize_piano_dimensions(*window_width, all_keys, font);
         *note_dim = piano_props.white_key_width;
         *key_spacing = piano_props.key_spacing;
     }

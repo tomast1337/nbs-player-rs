@@ -37,7 +37,7 @@ pub fn load_fonts(id: usize, rl: &mut RaylibHandle, thread: &RaylibThread) -> Fo
         setbackt,    // Retro like
     ];
 
-    let font_sizes = vec![32, 32, 32, 35, 35, 35];
+    let font_sizes = vec![64, 64, 64, 64, 64, 64];
 
     assert!(id < available_fonts.len(), "Font ID out of bounds");
     assert!(id < font_sizes.len(), "Font size ID out of bounds");

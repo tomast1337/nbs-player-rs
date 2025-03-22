@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
+use crate::theme::Theme;
 use raylib::prelude::*;
-
 #[derive(Debug)]
 pub struct PianoProps<'a> {
     pub key_spacing: f32,
@@ -217,6 +217,7 @@ pub fn draw_piano_keys(
     all_keys: &Vec<PianoKey>,
     piano_props: &PianoProps,
     key_texture: &Texture2D,
+    theme: &Theme,
 ) {
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
@@ -258,7 +259,7 @@ pub fn draw_piano_keys(
             Rectangle::new(x, y, white_key_width, white_key_height),
             Vector2::new(0.0, 0.0),
             0.0,
-            Color::WHITE,
+            theme.white_key_color,
         );
 
         // Calculate font size to fit within the key
@@ -279,7 +280,7 @@ pub fn draw_piano_keys(
             0.0,
             font_size_white,
             0.,
-            Color::BLACK,
+            theme.white_text_key_color,
         );
     }
 
@@ -302,7 +303,7 @@ pub fn draw_piano_keys(
                 Rectangle::new(x, y, black_key_width, black_key_height),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::BLACK.brightness(0.3),
+                theme.black_key_color,
             );
 
             // Calculate font size to fit within the key
@@ -323,7 +324,7 @@ pub fn draw_piano_keys(
                 0.0,
                 font_size_black,
                 0.,
-                Color::WHITESMOKE,
+                theme.black_text_key_color,
             );
         }
     }
@@ -354,8 +355,6 @@ pub fn initialize_piano_dimensions<'a>(
     window_width: f32,
     all_keys: &Vec<PianoKey>,
     font: &'a Font,
-    mut rl: &mut raylib::RaylibHandle,
-    thread: &raylib::RaylibThread,
 ) -> PianoProps<'a> {
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
