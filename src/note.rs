@@ -5,17 +5,6 @@ use raylib::prelude::*;
 
 use crate::piano;
 
-pub fn load_note_texture(
-    rl: &mut raylib::RaylibHandle,
-    thread: &raylib::RaylibThread,
-) -> Texture2D {
-    let note_image_bytes = include_bytes!("../assets/textures/note_block.png");
-    let note_image = raylib::texture::Image::load_image_from_mem(".png", note_image_bytes).unwrap();
-    let note_texture = rl.load_texture_from_image(thread, &note_image).unwrap();
-    note_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
-    note_texture
-}
-
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
     pub was_played: bool,
@@ -64,29 +53,6 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
     }
 
     note_blocks
-}
-
-fn hsl_to_rgb(h: f64, s: f64, l: f64) -> (u8, u8, u8) {
-    let c = (1.0 - (2.0 * l - 1.0).abs()) * s;
-    let x = c * (1.0 - ((h / 60.0) % 2.0 - 1.0).abs());
-    let m = l - c / 2.0;
-
-    let (r, g, b) = match h {
-        h if h < 60.0 => (c, x, 0.0),
-        h if h < 120.0 => (x, c, 0.0),
-        h if h < 180.0 => (0.0, c, x),
-        h if h < 240.0 => (0.0, x, c),
-        h if h < 300.0 => (x, 0.0, c),
-        _ => (c, 0.0, x),
-    };
-
-    let (r, g, b) = (
-        ((r + m) * 255.0).round() as u8,
-        ((g + m) * 255.0).round() as u8,
-        ((b + m) * 255.0).round() as u8,
-    );
-
-    (r, g, b)
 }
 
 pub fn generate_instrument_palette() -> HashMap<u8, Color> {
@@ -147,7 +113,7 @@ pub fn draw_notes(
     note_dim: f32,
     key_spacing: f32,
     instrument_colors: &HashMap<u8, Color>,
-    // font: impl AsRef<ffi::Font>,
+    font: &Font,
 ) -> i32 {
     let sliding_window_size = (window_height / note_dim) as i32 + 2;
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
@@ -161,18 +127,8 @@ pub fn draw_notes(
     let mut notes_rendered = 0;
 
     // Calculate font size to fit within the note block
-    let max_font_size = 20; // Maximum font size
-    let min_font_size = 8; // Minimum font size
-    let mut font_size = max_font_size;
-
-    // Measure text width and height
-    let mut text_width = d.measure_text("####", font_size);
-
-    // Adjust font size if the text is too large
-    while (text_width as f32 > note_dim - 5.) && font_size > min_font_size {
-        font_size -= 1;
-        text_width = d.measure_text("####", font_size);
-    }
+    let font_size_3 = calculate_font_size(note_dim, font, 3);
+    let font_size_2 = calculate_font_size(note_dim, font, 4);
 
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;
@@ -236,12 +192,26 @@ pub fn draw_notes(
                         let text = &piano_key.label;
 
                         // Center text horizontally and vertically within the note block
-                        let text_x =
-                            (note_rect.x + (note_rect.width - text_width as f32) / 2.0) as i32;
-                        let text_y = (note_rect.y + (note_rect.height) / 2.0) as i32;
-
+                        let font_size = if text.len() > 2 {
+                            font_size_3
+                        } else {
+                            font_size_2
+                        };
+                        let text_dim = font.measure_text(text, font_size, 0.);
+                        let text_x = x_pos + window_width / 2.0 - text_dim.x / 2.;
+                        let text_y = y_pos + note_dim / 2.0 - text_dim.y / 2.;
                         // Draw the text
-                        d.draw_text(text, text_x, text_y, font_size, Color::WHITE);
+                        //d.draw_text(text, text_x, text_y, font_size, Color::WHITE);
+                        d.draw_text_pro(
+                            &font,
+                            text,
+                            Vector2::new(text_x as f32, text_y as f32),
+                            Vector2::new(0.5, 0.5),
+                            0.0,
+                            font_size,
+                            0.,
+                            Color::WHITE,
+                        );
 
                         // Increment notes rendered count
                         notes_rendered += 1;
@@ -251,4 +221,25 @@ pub fn draw_notes(
         }
     }
     notes_rendered
+}
+
+fn calculate_font_size(note_dim: f32, font: &Font, label_size: usize) -> f32 {
+    let max_font_size = 30.;
+    let mut font_size = max_font_size;
+    // Maximum font size
+    let min_font_size = 8.;
+    // Minimum font size
+
+    // generate a string with the same length as the note label
+    let label = "#".repeat(label_size);
+
+    // Measure text width and height
+    let mut text_width = font.measure_text(&label, font_size, 0.).x;
+
+    // Adjust font size if the text is too large
+    while (text_width > note_dim - 5.) && font_size > min_font_size {
+        font_size -= 1.;
+        text_width = font.measure_text(&label, font_size, 0.).x;
+    }
+    font_size
 }
