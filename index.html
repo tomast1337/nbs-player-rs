@@ -166,8 +166,16 @@
                 }
             ]
 
+            const songs = [
+                "Bad Piggies Theme.nbs",
+                "bo en - My Time.zip",
+                "Mesmerizer.zip",
+                "Rush E.nbs",
+                "turkish_march.nbs",
+            ]
+
             const arguments = {
-                song_url: "./test-assets/Rush E.nbs",
+                song_url: `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`,
                 font_id: Math.floor(Math.random() * 6),
                 window_width: 1280,
                 window_height: 720,
