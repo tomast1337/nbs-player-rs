@@ -1,6 +1,6 @@
 extern crate raylib;
-
 use raylib::prelude::*;
+use std::env;
 use utils::time_formatter;
 
 mod audio;
@@ -13,6 +13,7 @@ mod theme;
 mod utils;
 
 fn main() {
+    env_logger::init();
     let mut window_width = 1280.;
     let mut window_height = 720.;
 
@@ -26,6 +27,9 @@ fn main() {
     } else {
         log::warn!("{:?}", nbs_file.instruments);
     }
+
+    let args: Vec<String> = env::args().collect();
+    println!("Arguments: {:?}", args);
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
