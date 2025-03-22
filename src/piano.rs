@@ -3,14 +3,15 @@ use std::collections::HashMap;
 use raylib::prelude::*;
 
 #[derive(Debug)]
-pub struct PianoProps {
+pub struct PianoProps<'a> {
     pub key_spacing: f32,
     pub white_key_width: f32,
     pub white_key_height: f32,
     pub black_key_width: f32,
     pub black_key_height: f32,
-    pub white_key_texture: Texture2D,
-    pub black_key_texture: Texture2D,
+    pub font: &'a Font,
+    pub font_size_white: f32,
+    pub font_size_black: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -215,15 +216,15 @@ pub fn draw_piano_keys(
     window_height: f32,
     all_keys: &Vec<PianoKey>,
     piano_props: &PianoProps,
-    font: &Font,
+    key_texture: &Texture2D,
 ) {
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
     let white_key_height = piano_props.white_key_height;
     let black_key_width = piano_props.black_key_width;
     let black_key_height = piano_props.black_key_height;
-    let white_key_texture = &piano_props.white_key_texture;
-    let black_key_texture = &piano_props.black_key_texture;
+    let font_size_white = piano_props.font_size_white;
+    let font_size_black = piano_props.font_size_black;
 
     let total_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
     let total_width = total_white_keys * (white_key_width + key_spacing) - key_spacing;
@@ -231,7 +232,7 @@ pub fn draw_piano_keys(
     let piano_x = (window_width - total_width) / 2.0;
     let piano_y = window_height - white_key_height;
 
-    let min_font_size = 16.;
+    let font = piano_props.font;
 
     // Draw a background for the piano
     d.draw_rectangle_rec(
@@ -247,12 +248,12 @@ pub fn draw_piano_keys(
         let y = piano_y - key.press_offset;
 
         d.draw_texture_pro(
-            white_key_texture,
+            key_texture,
             Rectangle::new(
                 0.0,
                 0.0,
-                white_key_texture.width as f32,
-                white_key_texture.height as f32,
+                key_texture.width as f32,
+                key_texture.height as f32,
             ),
             Rectangle::new(x, y, white_key_width, white_key_height),
             Vector2::new(0.0, 0.0),
@@ -261,26 +262,9 @@ pub fn draw_piano_keys(
         );
 
         // Calculate font size to fit within the key
-        let mut font_size = min_font_size;
-        let mut text_width;
-        let mut text_height;
-
-        loop {
-            let size = font.measure_text(&key.label, font_size, 0.);
-            text_width = size.x;
-            text_height = size.y;
-
-            if text_width <= width && text_height <= height {
-                break;
-            }
-
-            font_size -= 2.;
-
-            if font_size < min_font_size {
-                font_size = min_font_size;
-                break;
-            }
-        }
+        let text_size = font.measure_text(&key.label, font_size_white, 0.);
+        let text_width = text_size.x;
+        let text_height = text_size.y;
 
         // Center text horizontally and vertically within the key
         let text_x = x + (width - text_width) / 2.0;
@@ -293,7 +277,7 @@ pub fn draw_piano_keys(
             Vector2::new(text_x, text_y),
             Vector2::new(0.0, 0.0),
             0.0,
-            font_size,
+            font_size_white,
             0.,
             Color::BLACK,
         );
@@ -308,40 +292,23 @@ pub fn draw_piano_keys(
             let y = piano_y - 5.0 - key.press_offset;
 
             d.draw_texture_pro(
-                black_key_texture,
+                key_texture,
                 Rectangle::new(
                     0.0,
                     0.0,
-                    black_key_texture.width as f32,
-                    black_key_texture.height as f32,
+                    key_texture.width as f32,
+                    key_texture.height as f32,
                 ),
                 Rectangle::new(x, y, black_key_width, black_key_height),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                Color::WHITE,
+                Color::BLACK.brightness(0.3),
             );
 
             // Calculate font size to fit within the key
-            let mut font_size = min_font_size;
-            let mut text_width;
-            let mut text_height;
-
-            loop {
-                let size = font.measure_text(&key.label, font_size, 0.);
-                text_width = size.x;
-                text_height = size.y;
-
-                if text_width <= width && text_height <= height {
-                    break;
-                }
-
-                font_size -= 2.;
-
-                if font_size < min_font_size {
-                    font_size = min_font_size;
-                    break;
-                }
-            }
+            let text_size = font.measure_text(&key.label, font_size_black, 0.);
+            let text_width = text_size.x;
+            let text_height = text_size.y;
 
             // Center text horizontally and vertically within the key
             let text_x = x + (width - text_width) / 2.0;
@@ -354,21 +321,42 @@ pub fn draw_piano_keys(
                 Vector2::new(text_x, text_y),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                font_size,
+                font_size_black,
                 0.,
                 Color::WHITESMOKE,
             );
         }
     }
 }
-pub fn initialize_piano_dimensions(
+
+fn calculate_font_size(key_width: f32, font: &Font, label_size: usize) -> f32 {
+    let max_font_size = 30.;
+    let mut font_size = max_font_size;
+    // Maximum font size
+    let min_font_size = 8.;
+    // Minimum font size
+
+    // generate a string with the same length as the note label
+    let label = "#".repeat(label_size);
+
+    // Measure text width and height
+    let mut text_width = font.measure_text(&label, font_size, 0.).x;
+
+    // Adjust font size if the text is too large
+    while (text_width > key_width - 5.) && font_size > min_font_size {
+        font_size -= 1.;
+        text_width = font.measure_text(&label, font_size, 0.).x;
+    }
+    font_size
+}
+
+pub fn initialize_piano_dimensions<'a>(
     window_width: f32,
     all_keys: &Vec<PianoKey>,
+    font: &'a Font,
     mut rl: &mut raylib::RaylibHandle,
     thread: &raylib::RaylibThread,
-) -> PianoProps {
-    let (white_key_texture, black_key_texture) = load_piano_key_textures(&mut rl, &thread);
-
+) -> PianoProps<'a> {
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
     let black_key_width_ratio = 0.8;
@@ -381,38 +369,18 @@ pub fn initialize_piano_dimensions(
     let white_key_height = white_key_width * 3.0;
     let black_key_width = (white_key_width * black_key_width_ratio) - key_spacing;
     let black_key_height = white_key_height * black_key_height_ratio;
+
+    let font_size_white = calculate_font_size(white_key_width, font, 2);
+    let font_size_black = calculate_font_size(black_key_width, font, 3);
+
     PianoProps {
         key_spacing,
         white_key_width,
         white_key_height,
         black_key_width,
         black_key_height,
-        white_key_texture,
-        black_key_texture,
+        font,
+        font_size_white,
+        font_size_black,
     }
-}
-
-fn load_piano_key_textures(
-    rl: &mut raylib::RaylibHandle,
-    thread: &raylib::RaylibThread,
-) -> (Texture2D, Texture2D) {
-    let key_black_bytes = include_bytes!("../assets/textures/key_black.png");
-    let key_white_bytes = include_bytes!("../assets/textures/key_white.png");
-
-    let key_white_image =
-        raylib::texture::Image::load_image_from_mem(".png", key_white_bytes).unwrap();
-    let key_black_image =
-        raylib::texture::Image::load_image_from_mem(".png", key_black_bytes).unwrap();
-
-    let key_white_texture = rl
-        .load_texture_from_image(thread, &key_white_image)
-        .unwrap();
-    let key_black_texture = rl
-        .load_texture_from_image(thread, &key_black_image)
-        .unwrap();
-
-    key_white_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
-    key_black_texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
-
-    (key_white_texture, key_black_texture)
 }
