@@ -17,7 +17,9 @@ fn load_from_bytes(
     bytes: &[u8],
     font_size: i32,
 ) -> Result<Font, FontError> {
-    let font = rl.load_font_from_memory(thread, ".ttf", bytes, font_size, None)?;
+    let font = rl
+        .load_font_from_memory(thread, ".ttf", bytes, font_size, None)
+        .unwrap();
     Ok(font)
 }
 

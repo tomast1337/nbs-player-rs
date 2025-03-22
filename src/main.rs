@@ -36,16 +36,13 @@ fn main() {
     let (mut rl, thread) = raylib::init()
         .size(window_width as i32, window_height as i32)
         .title(&title)
-        .resizable()
+        //.resizable()
         .build();
-    rl.set_trace_log_callback(utils::logger_callback).unwrap();
     rl.set_target_fps(60);
 
     let textures = textures::load_textures(&mut rl, &thread);
     let theme = theme::Theme::default();
-
     let (mut all_keys, key_map) = piano::generate_piano_keys();
-
     let mut piano_props;
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
     log::debug!("Loaded note blocks");
@@ -502,7 +499,7 @@ fn main() {
                 0.0,
                 font_size,
                 0.,
-                theme.text_color,
+                theme.accent_color,
             );
         }
     }
