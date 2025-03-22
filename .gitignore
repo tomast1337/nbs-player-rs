@@ -1,2 +1,4 @@
 /target
 /dist
+!/target/wasm32-unknown-emscripten/release/nbs_player_rs.wasm
+!/target/wasm32-unknown-emscripten/release/nbs-player-rs.js
