@@ -1,6 +1,7 @@
 use crate::note::NoteBlock;
 use kira::{
     self, AudioManager, AudioManagerSettings, Decibels, DefaultBackend, Panning, PlaybackRate,
+    Tween,
     sound::static_sound::{StaticSoundData, StaticSoundSettings},
     track::{TrackBuilder, TrackHandle},
 };
@@ -10,7 +11,6 @@ use std::{collections::HashMap, io::Cursor, vec};
 pub struct AudioEngine {
     _manager: AudioManager<DefaultBackend>,
     sounds: HashMap<u32, (StaticSoundData, f64)>,
-    global_volume: f32,
     main_track: TrackHandle,
 }
 
@@ -66,7 +66,6 @@ impl AudioEngine {
             main_track,
             _manager: manager,
             sounds,
-            global_volume,
         }
     }
 
@@ -128,9 +127,7 @@ impl AudioEngine {
         let playback_rate = PlaybackRate(frequency_ratio as f64);
 
         // Calculate volume in decibels
-        let volume = Decibels::from(
-            10.0 * ((velocity * self.global_volume + EPOCH) / (100.0 + EPOCH)).log10(),
-        );
+        let volume = Decibels::from(10.0 * ((velocity + EPOCH) / (100.0 + EPOCH)).log10());
 
         // Calculate panning
         let pan = Panning((panning / 100.0) - 1.0);
@@ -143,6 +140,24 @@ impl AudioEngine {
 
         // Return resampled sound with the specified settings
         Some(sound.clone().with_settings(settings))
+    }
+
+    pub fn set_global_volume(&mut self, volume: f32) {
+        // Ensure volume is between 0 to 100
+        let volume = if volume < 0.0 {
+            0.0
+        } else if volume > 1.0 {
+            1.0
+        } else {
+            volume
+        };
+
+        self.main_track.set_volume(
+            volume,
+            Tween {
+                ..Default::default()
+            },
+        );
     }
 
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
