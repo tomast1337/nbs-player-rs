@@ -106,7 +106,7 @@ mod tests {
     #[test]
     fn test_load_nbs_from_file() {
         // Mock simple NBS file data
-        let nbs_data = include_bytes!("../test-assets/nyan_cat.nbs") as &[u8];
+        let nbs_data = include_bytes!("../test-assets/Bad Piggies Theme.nbs") as &[u8];
         let song_data = load_nbs_from_file(&nbs_data);
 
         assert!(!song_data.extra_sounds.is_empty() || song_data.extra_sounds.is_empty()); // Ensure it runs
@@ -114,7 +114,7 @@ mod tests {
 
     #[test]
     fn test_load_nbs_file() {
-        let nbs_data = include_bytes!("../test-assets/nyan_cat.nbs") as &[u8];
+        let nbs_data = include_bytes!("../test-assets/Bad Piggies Theme.nbs") as &[u8];
         let song_data = load_nbs_file(Some(&nbs_data));
 
         assert!(!song_data.extra_sounds.is_empty() || song_data.extra_sounds.is_empty()); // Ensure it runs

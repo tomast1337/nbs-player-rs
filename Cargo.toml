@@ -9,9 +9,14 @@ repository = ""
 [dependencies]
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
 log = "0.4.26"
-kira = "0.10.4"
-macroquad ="0.4.13"
-zip = { version = "2.4.1" , default-features = false, features = [ "deflate" ] }
+#kira = "0.10.4"
+kira = {version = "0.10.4", default-features = false, features = ["flac", "mp3", "ogg", "symphonia", "wav"]}
+zip = { version = "2.4.2" , default-features = false, features = [ "deflate" ] }
+raylib = "5.5.0"
+env_logger = "0.11.7"
+serde = {version = "1.0.219",features = ["derive"]}
+serde_json = "1.0.140"
+reqwest = { version = "0.12.15" }
 
 
 
