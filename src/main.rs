@@ -4,6 +4,7 @@ use std::env;
 use utils::time_formatter;
 
 mod audio;
+mod config;
 mod font;
 mod note;
 mod piano;
@@ -14,8 +15,38 @@ mod utils;
 
 fn main() {
     env_logger::init();
-    let mut window_width = 1280.;
-    let mut window_height = 720.;
+    let args: Vec<String> = env::args().collect();
+
+    if args.len() != 2 {
+        eprintln!("Usage: {} <json-config>", args[0]);
+        std::process::exit(1);
+    }
+
+    let json_arg = &args[1];
+
+    // Try to parse the JSON argument
+    let config: config::AppConfig = match serde_json::from_str(json_arg) {
+        Ok(parsed) => parsed,
+        Err(err) => {
+            eprintln!("Error parsing JSON: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    // Example validation: Check if width and height are within a reasonable range
+    if config.window_width <= 0 || config.window_height <= 0 {
+        eprintln!("Error: Window dimensions must be greater than 0");
+        std::process::exit(1);
+    }
+    if config.window_width < 200 || config.window_height < 200 {
+        eprintln!("Error: Window dimensions are too small");
+        std::process::exit(1);
+    }
+
+    println!("Parsed config: {:?}", config);
+
+    let mut window_width = config.window_width as f32;
+    let mut window_height = config.window_height as f32;
 
     let nbs_data = song::load_nbs_file(None);
 
@@ -27,9 +58,6 @@ fn main() {
     } else {
         log::warn!("{:?}", nbs_file.instruments);
     }
-
-    let args: Vec<String> = env::args().collect();
-    println!("Arguments: {:?}", args);
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
@@ -45,7 +73,7 @@ fn main() {
     rl.set_target_fps(60);
 
     let textures = textures::load_textures(&mut rl, &thread);
-    let theme = theme::Theme::default();
+    let theme = theme::Theme::from_theme_config(&config.theme);
     let (mut all_keys, key_map) = piano::generate_piano_keys();
     let mut piano_props;
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
@@ -67,7 +95,7 @@ fn main() {
 
     let mut is_paused: bool = true;
 
-    let font = font::load_fonts(0, &mut rl, &thread);
+    let font = font::load_fonts(config.font_id as usize, &mut rl, &thread);
     window_width = rl.get_screen_width() as f32;
     window_height = rl.get_screen_height() as f32;
     piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, &font);
