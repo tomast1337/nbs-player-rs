@@ -2,9 +2,9 @@ use raylib::prelude::*;
 pub struct Theme {
     pub background_color: Color,
     pub accent_color: Color,
+    pub text_color: Color,
     pub white_key_color: Color,
     pub black_key_color: Color,
-    pub text_color: Color,
     pub white_text_key_color: Color,
     pub black_text_key_color: Color,
 }

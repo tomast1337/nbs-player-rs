@@ -72,28 +72,51 @@
     <div class="container">
         <h1>Rust Wasm NBS Player</h1>
         <canvas tabindex="1" id="canvas" width="1280" height="720"></canvas>
+        <script>
+            const arguments = {
+                song_url: "./test-assets/Rush E.nbs",
+                font_id: Math.floor(Math.random() * 6),
+                window_width: 1280,
+                window_height: 720,
+                theme: {
+                    background_color: "#87CEEB",
+                    accent_color: "#FF6347",
+                    text_color: "#FAFAFA",
+                    white_key_color: "#FFFFFF",
+                    black_key_color: "#0A0A0A",
+                    white_text_key_color: "#1A1A1A",
+                    black_text_key_color: "#FAFAFA",
+                }
+            };
+
+            var Module = {
+                canvas: document.getElementById("canvas"),
+                arguments: [
+                    JSON.stringify(arguments),
+                ],
+            };
+        </script>
     </div>
 
     <footer>
-        Powered by <a href="https://www.rust-lang.org/" target="_blank">Rust</a> and <a href="https://webassembly.org/"
-            target="_blank">WebAssembly</a>
+        <p>Powered by <a href="https://www.rust-lang.org/" target="_blank">Rust</a> and <a
+                href="https://webassembly.org/" target="_blank">WebAssembly</a></p>
+        <div class="dependencies">
+            <p>Dependencies:</p>
+            <ul>
+                <li><a href="https://github.com/tomast1337/nbs-rs" target="_blank">nbs-rs</a> - NBS file parsing library
+                </li>
+                <li><a href="https://docs.rs/log/latest/log/" target="_blank">log</a> - Logging facade for Rust</li>
+                <li><a href="https://github.com/tesselode/kira" target="_blank">kira</a> - Audio playback library</li>
+                <li><a href="https://docs.rs/zip/latest/zip/" target="_blank">zip</a> - ZIP archive handling</li>
+                <li><a href="https://github.com/deltaphc/raylib-rs" target="_blank">raylib</a> - Game development
+                    library
+                </li>
+            </ul>
+        </div>
     </footer>
 
-    <script>
-        const arguments = {
-            song_url: "./test-assets/Rush E.nbs",
-            font_id: Math.floor(Math.random() * 6),
-            window_width: 1280,
-            window_height: 720,
-        };
 
-        var Module = {
-            canvas: document.getElementById("canvas"),
-            arguments: [
-                JSON.stringify(arguments),
-            ],
-        };
-    </script>
     <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"></script>
 </body>
 
