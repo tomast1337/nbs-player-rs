@@ -80,9 +80,18 @@
     </footer>
 
     <script>
+        const arguments = {
+            song_url: "./test-assets/Rush E.nbs",
+            font_id: Math.floor(Math.random() * 6),
+            window_width: 1280,
+            window_height: 720,
+        };
+
         var Module = {
             canvas: document.getElementById("canvas"),
-            arguments: ["./test-assets/Rush E.nbs"],
+            arguments: [
+                JSON.stringify(arguments),
+            ],
         };
     </script>
     <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"></script>
