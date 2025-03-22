@@ -13,9 +13,10 @@ mod textures;
 mod theme;
 mod utils;
 
-fn fetch_song(url: &str) -> Result<Vec<u8>, reqwest::Error> {
-    let response = reqwest::blocking::get(url)?.error_for_status()?; // This automatically handles HTTP errors
-    Ok(response.bytes()?.to_vec())
+async fn fetch_song(url: &str) -> Result<Vec<u8>, reqwest::Error> {
+    let response = reqwest::get(url).await?.error_for_status()?; // Async request
+    let bytes = response.bytes().await?;
+    Ok(bytes.to_vec())
 }
 
 fn main() {
@@ -55,15 +56,8 @@ fn main() {
 
     // Fetch the song data
     let song_url = &config.song_url;
-    let song_data = match fetch_song(song_url) {
-        Ok(data) => data,
-        Err(err) => {
-            eprintln!("Error fetching song: {}", err);
-            std::process::exit(1);
-        }
-    };
 
-    let nbs_data = song::load_nbs_file(Some(&song_data));
+    let nbs_data = song::load_nbs_file(None);
 
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
