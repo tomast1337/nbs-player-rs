@@ -174,10 +174,13 @@ fn main() {
         // Reset all key press states
         reset_key_press_states(&mut all_keys);
 
-        // get current tick notes to play
-        if let Some(notes) = note_blocks.get((current_tick as f32).floor() as usize) {
-            // if tick notes are not played, play them
-            if !played_ticks[(current_tick as f32).floor() as usize] {
+        // get current tick notes to play if not paused
+        if !is_paused
+            && elapsed_time < total_duration
+            && !played_ticks[(current_tick as f32).floor() as usize]
+        {
+            // Play the notes for the current tick
+            if let Some(notes) = note_blocks.get(current_tick as usize) {
                 audio_engine.play_tick(notes);
                 played_ticks[(current_tick as f32).floor() as usize] = true;
             }
