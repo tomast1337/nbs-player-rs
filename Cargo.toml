@@ -22,5 +22,3 @@ reqwest = { version = "0.12.15" }
 
 #[lib]
 #crate-type = ["cdylib", "rlib"]
-
-"{\\"song_url\\":\\"./test-assets/turkish_march.nbs\\",\\"font_id\\":5,\\"window_width\\":1280,\\"window_height\\":720,\\"theme\\":{\\"background_color\\":\\"#4B0082\\",\\"accent_color\\":\\"#FFD700\\",\\"text_color\\":\\"#E6E6FA\\",\\"white_key_color\\":\\"#F0E68C\\",\\"black_key_color\\":\\"#483D8B\\",\\"white_text_key_color\\":\\"#1A1A1A\\",\\"black_text_key_color\\":\\"#E6E6FA\\"}}"
