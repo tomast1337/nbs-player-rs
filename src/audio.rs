@@ -54,7 +54,13 @@ impl AudioEngine {
         let mut sounds = HashMap::new();
 
         for (i, sound) in sound_files.iter().enumerate() {
-            sounds.insert(i as u32, (Self::load_sound_data(sound.0.to_vec()), sound.1));
+            log::debug!(
+                "Loading sound Pitch: {}, File len: {}",
+                sound.1,
+                sound.0.len()
+            );
+            let loaded_sound_data = Self::load_sound_data(sound.0.to_vec());
+            sounds.insert(i as u32, (loaded_sound_data, sound.1));
         }
 
         log::info!("Loaded {} sounds", sounds.len());

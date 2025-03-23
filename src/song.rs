@@ -37,13 +37,15 @@ fn load_nbs_from_zip<'a>(bytes: &'a [u8]) -> SongData<'a> {
     let mut extra_sounds: Vec<(&[u8], f64)> = Vec::new();
 
     for instrument in instruments {
-        let sound_name = format!(
-            "sounds/{}",
-            String::from_utf8(instrument.name.clone()).unwrap()
-        );
-
-        if let Ok(mut sound_file) = zip.by_name(&sound_name) {
-            let mut sound = Vec::new();
+        let file_name = String::from_utf8(instrument.file.clone()).unwrap();
+        // if name is empty, skip
+        if file_name.is_empty() {
+            log::warn!("Empty file name for instrument {:?}!", instrument);
+            continue;
+        }
+        let file_path = format!("sounds/{}", file_name);
+        if let Ok(mut sound_file) = zip.by_name(&file_path) {
+            let mut sound: Vec<u8> = Vec::new();
             sound_file.read_to_end(&mut sound).unwrap();
             let key = instrument.key as f64;
             sounds_storage.push((sound, key)); // Store owned data
@@ -82,7 +84,6 @@ fn load_nbs_from_file<'a>(bytes: &'a [u8]) -> SongData<'a> {
 pub fn load_nbs_file<'a>(song_data: Option<&'a [u8]>) -> SongData<'a> {
     let song_data_bytes =
         song_data.unwrap_or_else(|| include_bytes!("../test-assets/bo en - My Time.zip"));
-
     if is_zip_file(song_data_bytes) {
         load_nbs_from_zip(song_data_bytes)
     } else {

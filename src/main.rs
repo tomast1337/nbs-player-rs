@@ -1,5 +1,6 @@
 extern crate raylib;
 use raylib::prelude::*;
+use simple_logger::SimpleLogger;
 use std::env;
 use utils::time_formatter;
 
@@ -13,18 +14,13 @@ mod textures;
 mod theme;
 mod utils;
 
-async fn fetch_song(url: &str) -> Result<Vec<u8>, reqwest::Error> {
-    let response = reqwest::get(url).await?.error_for_status()?; // Async request
-    let bytes = response.bytes().await?;
-    Ok(bytes.to_vec())
-}
-
 fn main() {
-    env_logger::init();
+    // Initialize the logger
+    SimpleLogger::new().init().unwrap();
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
-        eprintln!("Usage: {} <json-config>", args[0]);
+        log::error!("Usage: {} <json-config>", args[0]);
         std::process::exit(1);
     }
 
@@ -34,45 +30,43 @@ fn main() {
     let config: config::AppConfig = match serde_json::from_str(json_arg) {
         Ok(parsed) => parsed,
         Err(err) => {
-            eprintln!("Error parsing JSON: {}", err);
+            log::error!("Error parsing JSON: {}", err);
             std::process::exit(1);
         }
     };
 
     // Example validation: Check if width and height are within a reasonable range
     if config.window_width <= 0 || config.window_height <= 0 {
-        eprintln!("Error: Window dimensions must be greater than 0");
+        log::error!("Error: Window dimensions must be greater than 0");
         std::process::exit(1);
     }
     if config.window_width < 200 || config.window_height < 200 {
-        eprintln!("Error: Window dimensions are too small");
+        log::error!("Error: Window dimensions are too small");
         std::process::exit(1);
     }
 
-    println!("Parsed config: {:?}", config);
+    log::info!("Parsed config: {:?}", config);
 
     let mut window_width = config.window_width as f32;
     let mut window_height = config.window_height as f32;
 
     // Fetch the song data
-    let song_url = &config.song_url;
+    //let song_url = &config.song_url;
 
     let nbs_data = song::load_nbs_file(None);
 
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
 
-    if extra_sounds.len() == 0 {
-        log::warn!("No extra sounds loaded");
-    } else {
-        log::warn!("{:?}", nbs_file.instruments);
-    }
+    // log::debug!("AAAAAAAAAAAAAA {:?}", extra_sounds[0].0.len());
+    // print all extra sounds lengths
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
     let title: String = format!("{} - {}", song_name, song_author);
     let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
     let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
+    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
     let (mut rl, thread) = raylib::init()
         .size(window_width as i32, window_height as i32)
@@ -88,8 +82,6 @@ fn main() {
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
     log::debug!("Loaded note blocks");
     log::debug!("Loaded {} notes", note_blocks.len());
-
-    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
     log::debug!("Loaded audio engine");
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
@@ -126,8 +118,18 @@ fn main() {
 
     while !rl.window_should_close() {
         if toggle_fullscreen {
+            println!(
+                "Toggling fullscreen current resolution: {}x{}",
+                window_width, window_height
+            );
             rl.toggle_fullscreen();
+            window_width = rl.get_screen_width() as f32;
+            window_height = rl.get_screen_height() as f32;
             toggle_fullscreen = false;
+            println!(
+                "Toggled fullscreen new resolution: {}x{}",
+                window_width, window_height
+            );
         }
 
         update_window_dimensions(
@@ -712,7 +714,7 @@ fn update_window_dimensions<'a>(
     key_spacing: &mut f32,
     font: &'a Font,
 ) {
-    if *window_width as i32 != rl.get_screen_height() {
+    if *window_width as i32 != rl.get_screen_width() {
         *window_width = rl.get_screen_width() as f32;
         *piano_props = piano::initialize_piano_dimensions(*window_width, all_keys, font);
         *note_dim = piano_props.white_key_width;
