@@ -189,11 +189,8 @@ fn main() {
         // Trigger piano key presses for current and trigger audio
         if let Some(notes) = note_blocks.get_mut(current_tick as usize) {
             for note in notes {
-                if note.was_played == false {
-                    if let Some(&key_index) = key_map.get(&note.key) {
-                        all_keys[key_index].is_pressed = true;
-                    }
-                    note.was_played = true;
+                if let Some(&key_index) = key_map.get(&note.key) {
+                    all_keys[key_index].is_pressed = true;
                 }
             }
         }

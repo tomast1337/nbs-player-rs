@@ -7,7 +7,6 @@ use crate::piano;
 
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
-    pub was_played: bool,
     pub instrument: u8,
     pub key: u8,
     pub velocity: u8,
@@ -25,7 +24,6 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
             // get note layer
             if note.layer as usize >= song.layers.len() {
                 note_blocks[tick].push(NoteBlock {
-                    was_played: false,
                     instrument: note.instrument,
                     key: note.key,
                     velocity: note.velocity,
@@ -35,7 +33,6 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
             } else {
                 //let layer = &song.layers[note.layer as usize];
                 note_blocks[tick].push(NoteBlock {
-                    was_played: false,
                     instrument: note.instrument,
                     key: note.key,
                     velocity: note.velocity,
