@@ -66,7 +66,6 @@ fn main() {
     let title: String = format!("{} - {}", song_name, song_author);
     let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
     let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
-    let mut audio_engine: audio::AudioEngine = audio::AudioEngine::new(Some(extra_sounds), 0.5);
 
     let (mut rl, thread) = raylib::init()
         .size(window_width as i32, window_height as i32)
@@ -83,7 +82,6 @@ fn main() {
     log::debug!("Loaded note blocks");
     log::debug!("Loaded {} notes", note_blocks.len());
 
-    log::debug!("Loaded audio engine");
     let mut current_tick: f32; // Current tick in the song (now a float for sub-ticks)
     let mut elapsed_time: f32 = 0.; // Elapsed time in seconds
 
@@ -104,7 +102,10 @@ fn main() {
     key_spacing = piano_props.key_spacing;
 
     let mut volume = 0.5; // Volume level (0.0 to 1.0)
-    audio_engine.set_global_volume(volume);
+    // audio_engine.set_global_volume(volume);
+    let raylib_audio = RaylibAudio::init_audio_device().expect("Failed to initialize audio device");
+    let mut audio_engine: audio::AudioEngine =
+        audio::AudioEngine::new(&raylib_audio, Some(extra_sounds));
 
     let controls_close_time = 0.5; // Time in seconds to wait before closing controls
     let mut sec_since_last_mouse_move = 0.0; // Timer for mouse inactivity
@@ -182,6 +183,7 @@ fn main() {
             // Play the notes for the current tick
             if let Some(notes) = note_blocks.get(current_tick as usize) {
                 audio_engine.play_tick(notes);
+                //sound.play();
                 played_ticks[(current_tick as f32).floor() as usize] = true;
             }
         }
@@ -477,7 +479,7 @@ fn main() {
                     if volume > 1.0 {
                         volume = 1.0;
                     }
-                    audio_engine.set_global_volume(volume);
+                    //audio_engine.set_global_volume(volume);
                 }
 
                 // Check if the volume minus button was clicked
@@ -486,7 +488,7 @@ fn main() {
                     if volume < 0.0 {
                         volume = 0.0;
                     }
-                    audio_engine.set_global_volume(volume);
+                    //audio_engine.set_global_volume(volume);
                 }
 
                 // Check if the timeline was clicked

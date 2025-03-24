@@ -9,8 +9,6 @@ repository = ""
 [dependencies]
 nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git"}
 log = "0.4.26"
-#kira = kira = {version = "0.10.4"}
-kira = {version = "0.10.4", default-features = false, features = ["flac", "mp3", "ogg", "symphonia", "wav"]}
 zip = { version = "2.5.0" , default-features = false, features = [ "deflate" ] }
 raylib = "5.5.0"
 env_logger = "0.11.7"
