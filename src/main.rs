@@ -182,7 +182,7 @@ fn main() {
         {
             // Play the notes for the current tick
             if let Some(notes) = note_blocks.get(current_tick as usize) {
-                audio_engine.play_tick(notes, &raylib_audio);
+                audio_engine.play_tick(notes);
                 //sound.play();
                 played_ticks[(current_tick as f32).floor() as usize] = true;
             }

@@ -96,7 +96,7 @@ impl<'a> AudioEngine<'a> {
             p / (1 << (-x0 as i32)) as f32
         }
     }
-    pub fn play_tick(&mut self, notes: &[NoteBlock], raylib_audio: &'a RaylibAudio) {
+    pub fn play_tick(&mut self, notes: &[NoteBlock]) {
         // Precompute constants
         const INV_12: f32 = 1.0 / 12.0;
         for note in notes {
