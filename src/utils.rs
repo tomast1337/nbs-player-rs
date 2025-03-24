@@ -11,16 +11,3 @@ pub fn time_formatter(time: f32) -> String {
 pub fn lerp(start: f32, end: f32, t: f32) -> f32 {
     start + (end - start) * t
 }
-
-pub fn logger_callback(level: TraceLogLevel, text: &str) {
-    match level {
-        TraceLogLevel::LOG_ALL => log::trace!("{}", text),
-        TraceLogLevel::LOG_TRACE => log::trace!("{}", text),
-        TraceLogLevel::LOG_DEBUG => log::debug!("{}", text),
-        TraceLogLevel::LOG_INFO => log::info!("{}", text),
-        TraceLogLevel::LOG_WARNING => log::warn!("{}", text),
-        TraceLogLevel::LOG_ERROR => log::error!("{}", text),
-        TraceLogLevel::LOG_FATAL => log::error!("{}", text),
-        TraceLogLevel::LOG_NONE => {}
-    }
-}
