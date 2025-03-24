@@ -2,12 +2,12 @@ use raylib::prelude::*;
 
 #[derive(Debug)]
 pub enum FontError {
-    LoadError(String),
+    LoadError(),
 }
 
 impl From<String> for FontError {
-    fn from(err: String) -> FontError {
-        FontError::LoadError(err)
+    fn from(_err: String) -> FontError {
+        FontError::LoadError()
     }
 }
 
