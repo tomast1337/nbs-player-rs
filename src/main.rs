@@ -106,7 +106,7 @@ fn main() {
     let mut volume = 0.5; // Volume level (0.0 to 1.0)
     audio_engine.set_global_volume(volume);
 
-    let controls_close_time = 5.0; // Time in seconds to wait before closing controls
+    let controls_close_time = 0.5s; // Time in seconds to wait before closing controls
     let mut sec_since_last_mouse_move = 0.0; // Timer for mouse inactivity
     let mut last_mouse_pos = rl.get_mouse_position(); // Last recorded mouse position
     let mut controls_panel_y = window_height; // Initial position of the controls panel (hidden)
