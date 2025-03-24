@@ -105,6 +105,15 @@ fn main() {
 
     let mut volume = 0.5; // Volume level (0.0 to 1.0)
     // audio_engine.set_global_volume(volume);
+    let audio_eng = RaylibAudio::init_audio_device().expect("Failed to initialize audio device");
+    let ogg: &[u8] = include_bytes!("../assets/sounds/harp.ogg");
+    let wave = audio_eng
+        .new_wave_from_memory(".ogg", ogg)
+        .expect("Failed to load sound");
+
+    let sound = audio_eng
+        .new_sound_from_wave(&wave)
+        .expect("Failed to load sound");
 
     let controls_close_time = 0.5; // Time in seconds to wait before closing controls
     let mut sec_since_last_mouse_move = 0.0; // Timer for mouse inactivity
