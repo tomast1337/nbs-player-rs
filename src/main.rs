@@ -584,30 +584,24 @@ fn draw_end_message(
     d: &mut RaylibDrawHandle<'_>,
     font_size: f32,
 ) {
-    d.draw_text_pro(
-        font,
-        "End of Song",
-        Vector2::new(window_width / 2. - 50., window_height / 2.),
-        Vector2::new(0.0, 0.0),
-        0.0,
-        font_size,
-        0.,
-        theme.accent_color,
-    );
+    let measure = font.measure_text(title, font_size, 0.0);
     d.draw_text_pro(
         font,
         title,
-        Vector2::new(window_width / 2. - 50., window_height / 2. + 50.),
+        Vector2::new(window_width / 2. - measure.x / 2., window_height / 2. - 50.),
         Vector2::new(0.0, 0.0),
         0.0,
         font_size,
         0.,
         theme.accent_color,
     );
+    let measure = font
+        .measure_text("Press Space to Restart", font_size, 0.0)
+        .x;
     d.draw_text_pro(
         font,
         "Press Space to Restart",
-        Vector2::new(window_width / 2. - 50., window_height / 2. + 100.),
+        Vector2::new(window_width / 2. - measure / 2., window_height / 2. + 10.),
         Vector2::new(0.0, 0.0),
         0.0,
         font_size,
