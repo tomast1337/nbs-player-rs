@@ -23,13 +23,13 @@ cargo run -- "$(cat <<EOF
   "window_width": 1280,
   "window_height": 720,
   "theme": {
-    "background_color": "#4B0082",
-    "accent_color": "#FFD700",
-    "text_color": "#E6E6FA",
-    "white_key_color": "#F0E68C",
-    "black_key_color": "#483D8B",
-    "white_text_key_color": "#1A1A1A",
-    "black_text_key_color": "#E6E6FA"
+    "background_color": "#2E1A1A",
+    "accent_color": "#FF0000",
+    "text_color": "#E0E0E0",
+    "white_key_color": "#444444",
+    "black_key_color": "#1A1A1A",
+    "white_text_key_color": "#E0E0E0",
+    "black_text_key_color": "#FF0000"
   }
 }
 EOF
