@@ -175,7 +175,7 @@
             ]
 
             const arguments = {
-                song_url: `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`,
+
                 font_id: Math.floor(Math.random() * 6),
                 window_width: 1280,
                 window_height: 720,
@@ -187,6 +187,13 @@
                 arguments: [
                     JSON.stringify(arguments),
                 ],
+                preInit: async function () {
+                    const song_url = `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`;
+                    const response = await fetch(song_url);
+                    const arrayBuffer = await response.arrayBuffer();
+                    const byteArray = new Uint8Array(arrayBuffer);
+                    FS.createDataFile("/", "song.nbs", byteArray, true, true, true);
+                }
             };
         </script>
         <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"></script>

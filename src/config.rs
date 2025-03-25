@@ -13,7 +13,6 @@ pub struct ThemeConfig {
 
 #[derive(Debug, Deserialize, Serialize)]
 pub struct AppConfig {
-    pub song_url: String,
     pub font_id: u32,
     pub window_width: u32,
     pub window_height: u32,

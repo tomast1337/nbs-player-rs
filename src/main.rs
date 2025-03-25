@@ -50,16 +50,10 @@ fn main() {
     let mut window_width = config.window_width as f32;
     let mut window_height = config.window_height as f32;
 
-    // Fetch the song data
-    //let song_url = &config.song_url;
-
     let nbs_data = song::load_nbs_file(None);
 
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
-
-    // log::debug!("AAAAAAAAAAAAAA {:?}", extra_sounds[0].0.len());
-    // print all extra sounds lengths
 
     let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
     let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
