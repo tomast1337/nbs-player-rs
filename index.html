@@ -192,7 +192,7 @@
                     const response = await fetch(song_url);
                     const arrayBuffer = await response.arrayBuffer();
                     const byteArray = new Uint8Array(arrayBuffer);
-                    FS.createDataFile("/", "song.nbs", byteArray, true, true, true);
+                    FS.writeFile("/song.nbsx", byteArray);
                 }
             };
         </script>

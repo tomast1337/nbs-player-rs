@@ -17,6 +17,9 @@ mod utils;
 fn main() {
     // Initialize the logger
     SimpleLogger::new().init().unwrap();
+
+    let data = utils::load_file("/song.nbsx").unwrap();
+
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
@@ -50,7 +53,7 @@ fn main() {
     let mut window_width = config.window_width as f32;
     let mut window_height = config.window_height as f32;
 
-    let nbs_data = song::load_nbs_file(None);
+    let nbs_data = song::load_nbs_file(Some(&data));
 
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
