@@ -38,7 +38,7 @@
         canvas {
             width: 80vw;
             height: auto;
-            background-color: #000000;
+            background-color: #00000000;
             border-radius: 8px;
             border: 1px solid #444;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
@@ -194,6 +194,8 @@
                 ],
                 noInitialRun: true,
                 preInit: async function () {
+                    // wait 2 seconds before starting
+                    await new Promise(resolve => setTimeout(resolve, 200));
                     const song_url = `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`;
                     const response = await fetch(song_url);
                     const arrayBuffer = await response.arrayBuffer();
