@@ -116,18 +116,8 @@ fn main() {
 
     while !rl.window_should_close() {
         if toggle_fullscreen {
-            println!(
-                "Toggling fullscreen current resolution: {}x{}",
-                window_width, window_height
-            );
             rl.toggle_fullscreen();
-            window_width = rl.get_screen_width() as f32;
-            window_height = rl.get_screen_height() as f32;
             toggle_fullscreen = false;
-            println!(
-                "Toggled fullscreen new resolution: {}x{}",
-                window_width, window_height
-            );
         }
 
         update_window_dimensions(
@@ -198,9 +188,11 @@ fn main() {
             // Slide the panel up (show)
             controls_panel_y =
                 utils::lerp(controls_panel_y, window_height - control_panel_height, 0.2);
+            //rl.hide_cursor();
         } else {
             // Slide the panel down (hide)
             controls_panel_y = utils::lerp(controls_panel_y, window_height, 0.2);
+            //rl.show_cursor();
         }
 
         let mut d = rl.begin_drawing(&thread);
