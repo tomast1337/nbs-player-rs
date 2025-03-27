@@ -42,12 +42,15 @@
             border-radius: 8px;
             border: 1px solid #444;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            transition: transform 0.2s ease-in-out;
+            transition: all 0.3s ease;
         }
 
-        canvas:focus {
-            outline: none;
-            transform: scale(1.02);
+        /* Style when in fullscreen */
+        :fullscreen canvas {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+            border: none;
         }
 
         footer {
@@ -71,8 +74,11 @@
 <body>
     <div class="container">
         <h1>Rust Wasm NBS Player</h1>
-        <canvas tabindex="1" id="canvas" width="1280" height="720"></canvas>
+        <canvas tabindex="1" id="canvas"></canvas>
         <script>
+            const screenWidth = window.screen.width;
+            const screenHeight = window.screen.height;
+
             const themes = [
                 {
                     background_color: "#7EC850", // Grass-like green
@@ -175,10 +181,9 @@
             ]
 
             const arguments = {
-
                 font_id: Math.floor(Math.random() * 6),
-                window_width: 1280,
-                window_height: 720,
+                window_width: screenWidth,
+                window_height: screenHeight,
                 theme: themes[Math.floor(Math.random() * themes.length)],
             };
 
