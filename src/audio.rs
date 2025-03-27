@@ -51,7 +51,10 @@ impl<'a> AudioEngine<'a> {
         for (i, sound) in sound_files.iter().enumerate() {
             let loaded_sound_data = raylib_audio
                 .new_wave_from_memory(".ogg", sound.0)
-                .expect("Failed to load sound");
+                .unwrap_or_else(|err| {
+                    log::error!("Failed to load sound: {}", err);
+                    panic!("Sound loading failed");
+                });
 
             // Create multiple instances of the same sound
             let mut waves = Vec::with_capacity(pool_size);
