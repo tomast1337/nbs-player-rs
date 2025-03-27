@@ -187,12 +187,14 @@
                 arguments: [
                     JSON.stringify(arguments),
                 ],
+                noInitialRun: true,
                 preInit: async function () {
                     const song_url = `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`;
                     const response = await fetch(song_url);
                     const arrayBuffer = await response.arrayBuffer();
                     const byteArray = new Uint8Array(arrayBuffer);
                     FS.writeFile("/song.nbsx", byteArray);
+                    callMain(Module.arguments);
                 }
             };
         </script>
