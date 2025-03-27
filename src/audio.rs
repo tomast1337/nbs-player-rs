@@ -3,13 +3,13 @@ use raylib::{ffi::PlaySound, prelude::*};
 use std::{collections::HashMap, vec};
 
 pub struct AudioClip<'a> {
-    pub wave: Sound<'a>,
+    pub waves: Vec<Sound<'a>>, // Multiple instances of the same sound
     pub pitch: f64,
+    pub current_index: usize, // To rotate through instances
 }
 
 pub struct AudioEngine<'a> {
-    //pool_max: usize,
-    //playing_pool: VecDeque<ffi::Sound>,
+    pool_size: usize, // Number of instances per sound
     pub sounds: HashMap<u32, AudioClip<'a>>,
 }
 
@@ -40,31 +40,35 @@ impl<'a> AudioEngine<'a> {
             sound_files.extend(extra_sounds);
         }
 
+        let pool_size = sound_files.len() / 2;
+        log::debug!("Pool size: {}", pool_size);
+
         let mut audio_engine = Self {
-            //pool_max: 25,
-            //playing_pool: VecDeque::new(),
             sounds: HashMap::new(),
+            pool_size,
         };
 
         for (i, sound) in sound_files.iter().enumerate() {
-            log::debug!(
-                "Loading sound Pitch: {}, File len: {}",
-                sound.1,
-                sound.0.len()
-            );
-            let loaded_sound_data = {
-                let wave = raylib_audio
-                    .new_wave_from_memory(".ogg", sound.0)
-                    .expect("Failed to load sound");
-                wave
-            }; // raylib_audio does not live long enough borrowed value does not live long enough
+            let loaded_sound_data = raylib_audio
+                .new_wave_from_memory(".ogg", sound.0)
+                .expect("Failed to load sound");
+
+            // Create multiple instances of the same sound
+            let mut waves = Vec::with_capacity(pool_size);
+            for _ in 0..pool_size {
+                waves.push(
+                    raylib_audio
+                        .new_sound_from_wave(&loaded_sound_data)
+                        .expect("Failed to create sound"),
+                );
+            }
+
             audio_engine.sounds.insert(
                 i as u32,
                 AudioClip {
-                    wave: raylib_audio
-                        .new_sound_from_wave(&loaded_sound_data)
-                        .expect("Failed to create sound"),
+                    waves,
                     pitch: sound.1,
+                    current_index: 0,
                 },
             );
         }
@@ -108,7 +112,7 @@ impl<'a> AudioEngine<'a> {
             let pitch = note.pitch as f32; // Use f32 directly
 
             // Fetch sound data
-            let sound_data = match self.sounds.get(&sound_id) {
+            let sound_data = match self.sounds.get_mut(&sound_id) {
                 Some(data) => data,
                 None => {
                     log::error!("Sound ID {} not found", sound_id);
@@ -116,22 +120,27 @@ impl<'a> AudioEngine<'a> {
                 }
             };
 
-            //let sound_data = sound_data.wave;
-
+            // Calculate sound properties
             let tone = sound_data.pitch as f32;
             let frequency_ratio = AudioEngine::fast_pow2((key + (pitch / 100.0) - tone) * INV_12);
 
             let volume = velocity / 100.0;
             let pan = ((panning + 100.0) / 200.0) - 0.5; // -1 to 1 range
 
-            sound_data.wave.set_pan(pan);
-            sound_data.wave.set_volume(volume);
-            sound_data.wave.set_pitch(frequency_ratio);
-            // Play the sound
-            let sound = sound_data.wave.clone();
+            // Get the next sound instance to use
+            let sound_index = sound_data.current_index;
+            let sound = &mut sound_data.waves[sound_index];
+
+            // Update index for next play
+            sound_data.current_index = (sound_data.current_index + 1) % self.pool_size;
+
+            // Configure and play the sound
+            sound.set_pan(pan);
+            sound.set_volume(volume);
+            sound.set_pitch(frequency_ratio);
 
             unsafe {
-                PlaySound(sound);
+                PlaySound(sound.clone());
             }
 
             // Store the sound in the playing pool
