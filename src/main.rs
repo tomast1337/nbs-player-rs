@@ -18,7 +18,7 @@ fn main() {
     // Initialize the logger
     SimpleLogger::new().init().unwrap();
 
-    let data = utils::load_file("/song.nbsx").unwrap();
+    let data = utils::load_file("song.nbsx").unwrap();
 
     let args: Vec<String> = env::args().collect();
 
