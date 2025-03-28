@@ -40,7 +40,11 @@ impl<'a> AudioEngine<'a> {
             sound_files.extend(extra_sounds);
         }
 
-        let pool_size = sound_files.len() / 2;
+        let pool_size = if cfg!(target_arch = "wasm32") {
+            3 // Smaller pool for WASM
+        } else {
+            sound_files.len() // Larger pool for native
+        };
         log::debug!("Pool size: {}", pool_size);
 
         let mut audio_engine = Self {
