@@ -6,6 +6,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <title>Rust Wasm NBS Player</title>
+    <link rel="icon" href="favicon.png" type="image/png">
     <style>
         body {
             margin: 0;
@@ -39,10 +40,7 @@
             width: 80vw;
             height: auto;
             background-color: #00000000;
-            border-radius: 8px;
-            border: 1px solid #444;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
-            transition: all 0.3s ease;
         }
 
         /* Style when in fullscreen */
@@ -76,8 +74,12 @@
         <h1>Rust Wasm NBS Player</h1>
         <canvas tabindex="1" id="canvas"></canvas>
         <script>
-            const screenWidth = window.screen.width;
-            const screenHeight = window.screen.height;
+            // ADD THE <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"> TAG TO THE PAGE
+            const scriptTag = document.createElement("script");
+            scriptTag.src = "./target/wasm32-unknown-emscripten/release/nbs-player-rs.js";
+
+            // Append the script tag to the body
+            document.body.appendChild(scriptTag);
 
             const themes = [
                 {
@@ -180,15 +182,36 @@
                 "turkish_march.nbs",
             ]
 
+            let fullscreen_window_width = window.screen.width;
+            let fullscreen_window_height = window.screen.height;
+            // if window width is less than height, swap them
+            if (fullscreen_window_width < fullscreen_window_height) {
+                const temp = fullscreen_window_width;
+                fullscreen_window_width = fullscreen_window_height;
+                fullscreen_window_height = temp;
+            }
+
+            // 720p resolution
+            const window_width = 1280;
+            const window_height = 720;
+
             const arguments = {
                 font_id: Math.floor(Math.random() * 6),
-                window_width: screenWidth,
-                window_height: screenHeight,
+                window_width: fullscreen_window_width,
+                window_height: fullscreen_window_height,
                 theme: themes[Math.floor(Math.random() * themes.length)],
             };
 
+            const canvas = document.getElementById("canvas");
+            // if spacebar is pressed do not roll the screen
+            canvas.addEventListener("keydown", function (event) {
+                if (event.code === "Space") {
+                    event.preventDefault();
+                }
+            });
+
             var Module = {
-                canvas: document.getElementById("canvas"),
+                canvas: canvas,
                 arguments: [
                     JSON.stringify(arguments),
                 ],
@@ -205,7 +228,7 @@
                 }
             };
         </script>
-        <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"></script>
+
     </div>
 
     <footer>
