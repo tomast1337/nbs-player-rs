@@ -16,9 +16,21 @@ mod utils;
 
 fn main() {
     // Initialize the logger
-    SimpleLogger::new().init().unwrap();
+    match SimpleLogger::new().init() {
+        Ok(_) => log::info!("Logger initialized"),
+        Err(err) => {
+            eprintln!("Failed to initialize logger: {}", err);
+            std::process::exit(1);
+        }
+    };
 
-    let data = utils::load_file("song.nbsx").unwrap();
+    let data = match utils::load_file("song.nbsx") {
+        Ok(data) => data,
+        Err(err) => {
+            log::error!("Error loading file: {}", err);
+            std::process::exit(1);
+        }
+    };
 
     let args: Vec<String> = env::args().collect();
 
@@ -58,9 +70,16 @@ fn main() {
     let nbs_file = nbs_data.song;
     let extra_sounds = nbs_data.extra_sounds;
 
-    let song_name: String = String::from_utf8(nbs_file.header.song_name.clone()).unwrap();
-    let song_author: String = String::from_utf8(nbs_file.header.song_author.clone()).unwrap();
+    let song_name: String = match String::from_utf8(nbs_file.header.song_name.clone()) {
+        Ok(name) => name,
+        Err(_err) => "Error converting song name".to_string(),
+    };
+    let song_author: String = match String::from_utf8(nbs_file.header.song_author.clone()) {
+        Ok(author) => author,
+        Err(_err) => "Error converting song author".to_string(),
+    };
     let title: String = format!("{} - {}", song_name, song_author);
+
     let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
     let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
@@ -199,7 +218,7 @@ fn main() {
         d.clear_background(theme.background_color);
 
         // Draw notes
-        let notes_rendered = note::draw_notes(
+        note::draw_notes(
             &mut d,
             window_width,
             window_height,
@@ -226,18 +245,12 @@ fn main() {
             &theme,
         );
 
+        let min_font_size = 18.;
+        let max_font_size = 40.;
+        let font_size = (window_width / 64.0).clamp(min_font_size, max_font_size as f32);
+
         // Calculate font size based on screen width with min and max limits
-        let font_size = draw_song_status(
-            &mut d,
-            &theme,
-            window_width,
-            &title,
-            total_duration,
-            current_tick,
-            elapsed_time,
-            &font,
-            notes_rendered,
-        );
+        draw_song_status(&mut d, &theme, &title, &font, font_size);
 
         // Draw FPS in the top-right corner
         d.draw_fps(window_width as i32 - 100, 10);
@@ -604,35 +617,18 @@ fn draw_end_message(
 fn draw_song_status(
     d: &mut RaylibDrawHandle<'_>,
     theme: &theme::Theme,
-    window_width: f32,
     title: &String,
-    total_duration: f32,
-    current_tick: f32,
-    elapsed_time: f32,
     font: &Font,
-    notes_rendered: i32,
+    font_size: f32,
 ) -> f32 {
-    let min_font_size = 18.;
-    let max_font_size = 40.;
-    let font_size = (window_width / 64.0).clamp(min_font_size, max_font_size as f32);
-
     // Define text positions
     let start_x = 10.0;
-    let mut start_y = 10.0;
-    let line_height = font.measure_text(title, font_size, 0.0).y;
+    let start_y = 10.0;
 
     // Define text color
     let text_color = theme.text_color;
 
     // Draw song status
-
-    let current_tick_text = format!("Current Tick: {:.4}", current_tick);
-    let notes_rendered_text = format!("Notes Rendered: {}", notes_rendered);
-    let duration_text = format!(
-        "Duration: {}|{}",
-        time_formatter(elapsed_time),
-        time_formatter(total_duration)
-    );
     d.draw_text_pro(
         font,
         title,
@@ -640,43 +636,6 @@ fn draw_song_status(
         Vector2::new(0.0, 0.0),
         0.0,
         font_size as f32,
-        0.,
-        text_color,
-    );
-    // Draw duration
-    start_y += line_height;
-    d.draw_text_pro(
-        font,
-        &duration_text,
-        Vector2::new(start_x, start_y),
-        Vector2::new(0.0, 0.0),
-        0.0,
-        font_size,
-        0.,
-        text_color,
-    );
-
-    // Draw notes rendered
-    start_y += line_height;
-    d.draw_text_pro(
-        font,
-        &notes_rendered_text,
-        Vector2::new(start_x, start_y),
-        Vector2::new(0.0, 0.0),
-        0.0,
-        font_size,
-        0.,
-        text_color,
-    );
-
-    start_y += line_height;
-    d.draw_text_pro(
-        font,
-        &current_tick_text,
-        Vector2::new(start_x, start_y),
-        Vector2::new(0.0, 0.0),
-        0.0,
-        font_size,
         0.,
         text_color,
     );

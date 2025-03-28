@@ -1,16 +1,20 @@
 use crate::note::NoteBlock;
 use raylib::{ffi::PlaySound, prelude::*};
-use std::{collections::HashMap, vec};
+use std::{
+    collections::{HashMap, VecDeque},
+    vec,
+};
 
 pub struct AudioClip<'a> {
-    pub waves: Vec<Sound<'a>>, // Multiple instances of the same sound
+    pub wave: Wave<'a>, // Store the Wave instead of Sound
     pub pitch: f64,
-    pub current_index: usize, // To rotate through instances
 }
 
 pub struct AudioEngine<'a> {
-    pool_size: usize, // Number of instances per sound
     pub sounds: HashMap<u32, AudioClip<'a>>,
+    sound_pool: VecDeque<Sound<'a>>,
+    pool_size: usize,
+    raylib_audio: &'a RaylibAudio,
 }
 
 impl<'a> AudioEngine<'a> {
@@ -41,41 +45,29 @@ impl<'a> AudioEngine<'a> {
         }
 
         let pool_size = if cfg!(target_arch = "wasm32") {
-            3 // Smaller pool for WASM
+            128 // Smaller pool for WASM
         } else {
-            sound_files.len() // Larger pool for native
+            256 // Larger pool for other platforms
         };
         log::debug!("Pool size: {}", pool_size);
 
         let mut audio_engine = Self {
             sounds: HashMap::new(),
+            sound_pool: VecDeque::with_capacity(pool_size),
             pool_size,
+            raylib_audio,
         };
 
         for (i, sound) in sound_files.iter().enumerate() {
-            let loaded_sound_data = raylib_audio
+            let wave = raylib_audio
                 .new_wave_from_memory(".ogg", sound.0)
-                .unwrap_or_else(|err| {
-                    log::error!("Failed to load sound: {}", err);
-                    panic!("Sound loading failed");
-                });
-
-            // Create multiple instances of the same sound
-            let mut waves = Vec::with_capacity(pool_size);
-            for _ in 0..pool_size {
-                waves.push(
-                    raylib_audio
-                        .new_sound_from_wave(&loaded_sound_data)
-                        .expect("Failed to create sound"),
-                );
-            }
+                .expect("Failed to load sound");
 
             audio_engine.sounds.insert(
                 i as u32,
                 AudioClip {
-                    waves,
+                    wave,
                     pitch: sound.1,
-                    current_index: 0,
                 },
             );
         }
@@ -108,50 +100,57 @@ impl<'a> AudioEngine<'a> {
         }
     }
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
-        // Precompute constants
         const INV_12: f32 = 1.0 / 12.0;
-        for note in notes {
-            // Extract note properties
-            let sound_id = note.instrument as u32;
-            let key = note.key as f32; // Use f32 directly
-            let velocity = note.velocity as f32; // 0-100
-            let panning = note.panning as f32;
-            let pitch = note.pitch as f32; // Use f32 directly
 
-            // Fetch sound data
-            let sound_data = match self.sounds.get_mut(&sound_id) {
+        for note in notes {
+            let sound_id = note.instrument as u32;
+            let key = note.key as f32;
+            let velocity = note.velocity as f32;
+            let panning = note.panning as f32;
+            let pitch = note.pitch as f32;
+
+            let sound_data = match self.sounds.get(&sound_id) {
                 Some(data) => data,
-                None => {
-                    log::error!("Sound ID {} not found", sound_id);
-                    continue;
-                }
+                None => continue,
             };
 
             // Calculate sound properties
             let tone = sound_data.pitch as f32;
             let frequency_ratio = AudioEngine::fast_pow2((key + (pitch / 100.0) - tone) * INV_12);
-
             let volume = velocity / 100.0;
-            let pan = ((panning + 100.0) / 200.0) - 0.5; // -1 to 1 range
+            let pan = ((panning + 100.0) / 200.0) - 0.5;
 
-            // Get the next sound instance to use
-            let sound_index = sound_data.current_index;
-            let sound = &mut sound_data.waves[sound_index];
+            // Get a sound from the pool or create a new one
+            let sound = if self.sound_pool.len() >= self.pool_size {
+                // Pool is full, reuse the oldest sound
+                let old_sound = self.sound_pool.pop_front().unwrap();
 
-            // Update index for next play
-            sound_data.current_index = (sound_data.current_index + 1) % self.pool_size;
+                // Stop the sound if it's playing
+                old_sound.stop();
 
-            // Configure and play the sound
+                // Create new sound from the wave data
+                self.raylib_audio
+                    .new_sound_from_wave(&sound_data.wave)
+                    .expect("Failed to create sound")
+            } else {
+                // Pool has space, create new sound
+                self.raylib_audio
+                    .new_sound_from_wave(&sound_data.wave)
+                    .expect("Failed to create sound")
+            };
+
+            // Configure the sound
             sound.set_pan(pan);
             sound.set_volume(volume);
             sound.set_pitch(frequency_ratio);
 
+            // Play the sound
             unsafe {
                 PlaySound(sound.clone());
             }
 
-            // Store the sound in the playing pool
-            //self.playing_pool.push_back(sound);
+            // Add to pool
+            self.sound_pool.push_back(sound);
         }
     }
 }
