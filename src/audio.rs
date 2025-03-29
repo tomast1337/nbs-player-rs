@@ -45,7 +45,7 @@ impl<'a> AudioEngine<'a> {
         }
 
         let pool_size = if cfg!(target_arch = "wasm32") {
-            128 // Smaller pool for WASM
+            48 // Smaller pool for WASM
         } else {
             256 // Larger pool for other platforms
         };
@@ -127,6 +127,7 @@ impl<'a> AudioEngine<'a> {
 
                 // Stop the sound if it's playing
                 old_sound.stop();
+                // Free the old sound
 
                 // Create new sound from the wave data
                 self.raylib_audio
