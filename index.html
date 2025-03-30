@@ -34,6 +34,8 @@
             border-radius: 12px;
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
             backdrop-filter: blur(10px);
+            width: 90%;
+            max-width: 1200px;
         }
 
         canvas {
@@ -41,6 +43,7 @@
             height: auto;
             background-color: #00000000;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            margin-bottom: 20px;
         }
 
         /* Style when in fullscreen */
@@ -49,6 +52,76 @@
             height: 100vh !important;
             border-radius: 0;
             border: none;
+        }
+
+        .controls {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .song-info {
+            margin: 10px 0;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        button {
+            background: rgba(255, 255, 255, 0.1);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+            min-width: 100px;
+        }
+
+        button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .playlist {
+            margin-top: 20px;
+            width: 100%;
+            max-height: 200px;
+            overflow-y: auto;
+            background: rgba(0, 0, 0, 0.2);
+            padding: 10px;
+
+            /*
+            Style the scrollbar
+            */
+            scrollbar-width: 48px;
+            scrollbar-color: #00bcd4 #2a2a40;
+        }
+
+        .playlist-item {
+            padding: 8px 15px;
+            margin: 5px 0;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+        }
+
+        .playlist-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .playlist-item.current {
+            background: rgba(0, 188, 212, 0.3);
+            font-weight: bold;
+        }
+
+        .playlist-item.current::before {
+            content: "▶";
+            margin-right: 10px;
+            color: #00bcd4;
         }
 
         footer {
@@ -72,7 +145,13 @@
 <body>
     <div class="container">
         <h1>Rust Wasm NBS Player</h1>
+        <div class="song-info" id="songInfo">Loading...</div>
         <canvas tabindex="1" id="canvas"></canvas>
+        <div class="controls">
+            <button id="prevBtn">Previous</button>
+            <button id="nextBtn">Next</button>
+        </div>
+        <div class="playlist" id="playlist"></div>
         <script>
             // ADD THE <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"> TAG TO THE PAGE
             const scriptTag = document.createElement("script");
@@ -180,7 +259,61 @@
                 "Mesmerizer.zip",
                 "Rush E.nbs",
                 "turkish_march.nbs",
-            ]
+            ];
+
+            // Store current song index in localStorage
+            let currentSongIndex = localStorage.getItem('currentSongIndex');
+            if (currentSongIndex === null) {
+                currentSongIndex = 0;
+            } else {
+                currentSongIndex = parseInt(currentSongIndex);
+                if (currentSongIndex >= songs.length) {
+                    currentSongIndex = 0;
+                }
+            }
+
+            const songInfoElement = document.getElementById('songInfo');
+            const prevBtn = document.getElementById('prevBtn');
+            const nextBtn = document.getElementById('nextBtn');
+            const playlistElement = document.getElementById('playlist');
+
+            function updateUI() {
+                // Update song info
+                songInfoElement.textContent = `Now Playing: ${songs[currentSongIndex]}`;
+
+                // Update playlist display
+                playlistElement.innerHTML = '';
+                songs.forEach((song, index) => {
+                    const item = document.createElement('div');
+                    item.className = `playlist-item ${index === currentSongIndex ? 'current' : ''}`;
+                    item.textContent = song;
+                    item.addEventListener('click', () => {
+                        loadSong(index);
+                    });
+                    playlistElement.appendChild(item);
+                });
+            }
+
+            function loadSong(index) {
+                currentSongIndex = index;
+                localStorage.setItem('currentSongIndex', currentSongIndex);
+
+                // Reload the page to play the new song
+                location.reload();
+            }
+
+            function prevSong() {
+                currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
+                loadSong(currentSongIndex);
+            }
+
+            function nextSong() {
+                currentSongIndex = (currentSongIndex + 1) % songs.length;
+                loadSong(currentSongIndex);
+            }
+
+            prevBtn.addEventListener('click', prevSong);
+            nextBtn.addEventListener('click', nextSong);
 
             let fullscreen_window_width = window.screen.width;
             let fullscreen_window_height = window.screen.height;
@@ -220,9 +353,11 @@
                 ],
                 noInitialRun: true,
                 preInit: async function () {
+                    updateUI();
+
                     // wait 2 seconds before starting
                     await new Promise(resolve => setTimeout(resolve, 200));
-                    const song_url = `./test-assets/${songs[Math.floor(Math.random() * songs.length)]}`;
+                    const song_url = `./test-assets/${songs[currentSongIndex]}`;
                     const response = await fetch(song_url);
                     const arrayBuffer = await response.arrayBuffer();
                     const byteArray = new Uint8Array(arrayBuffer);
@@ -230,8 +365,16 @@
                     callMain(Module.arguments);
                 }
             };
-        </script>
 
+            // Add keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.code === 'ArrowLeft') {
+                    prevSong();
+                } else if (e.code === 'ArrowRight') {
+                    nextSong();
+                }
+            });
+        </script>
     </div>
 
     <footer>
@@ -241,8 +384,6 @@
             <p>Source code available on <a href="https://github.com/tomast1337/nbs-player-rs" target="_blank">GitHub</a>
         </div>
     </footer>
-
-
 </body>
 
 </html>
