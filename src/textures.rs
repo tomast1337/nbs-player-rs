@@ -7,6 +7,11 @@ pub struct Textures {
     pub pause_button: Texture2D,
     pub reset_button: Texture2D,
     pub fullscreen_button: Texture2D,
+    pub vol_000: Texture2D,
+    pub vol_025: Texture2D,
+    pub vol_050: Texture2D,
+    pub vol_075: Texture2D,
+    pub vol_100: Texture2D,
 }
 
 fn load_from_mem(
@@ -63,6 +68,41 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
         ".png",
     );
 
+    let vol_000 = load_from_mem(
+        rl,
+        thread,
+        include_bytes!("../assets/textures/vol000.png"),
+        ".png",
+    );
+
+    let vol_025 = load_from_mem(
+        rl,
+        thread,
+        include_bytes!("../assets/textures/vol025.png"),
+        ".png",
+    );
+
+    let vol_050 = load_from_mem(
+        rl,
+        thread,
+        include_bytes!("../assets/textures/vol050.png"),
+        ".png",
+    );
+
+    let vol_075 = load_from_mem(
+        rl,
+        thread,
+        include_bytes!("../assets/textures/vol100.png"),
+        ".png",
+    );
+
+    let vol_100 = load_from_mem(
+        rl,
+        thread,
+        include_bytes!("../assets/textures/vol100.png"),
+        ".png",
+    );
+
     Textures {
         note_texture,
         piano_key_texture,
@@ -70,5 +110,10 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
         pause_button,
         reset_button,
         fullscreen_button,
+        vol_000,
+        vol_025,
+        vol_050,
+        vol_075,
+        vol_100,
     }
 }

@@ -391,7 +391,7 @@ fn main() {
                 0.0,
                 font_size,
                 0.,
-                theme.accent_color,
+                theme.accent_color.alpha(0.5),
             );
 
             // Draw the volume controls
@@ -409,6 +409,36 @@ fn main() {
                 &mut volume,
                 0.0,
                 1.0,
+            );
+
+            let volume_texture = if volume == 0.0 {
+                &textures.vol_000
+            } else if volume <= 0.25 {
+                &textures.vol_025
+            } else if volume <= 0.5 {
+                &textures.vol_050
+            } else if volume <= 0.75 {
+                &textures.vol_075
+            } else {
+                &textures.vol_100
+            };
+            d.draw_texture_pro(
+                volume_texture,
+                Rectangle::new(
+                    0.0,
+                    0.0,
+                    volume_texture.width as f32,
+                    volume_texture.height as f32,
+                ),
+                Rectangle::new(
+                    volume_rect.x + button_size.x / 2.,
+                    volume_rect.y,
+                    button_size.x,
+                    button_size.y,
+                ),
+                Vector2::new(0.0, 0.0),
+                0.0,
+                theme.accent_color.alpha(0.5),
             );
 
             // Draw the fullscreen button
