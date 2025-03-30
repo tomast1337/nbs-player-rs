@@ -16,17 +16,6 @@ mod textures;
 mod theme;
 mod utils;
 
-fn string_to_c_char(s: String) -> *const c_char {
-    // Create a CString, which will add a null terminator
-    let c_string = CString::new(s).expect("CString::new failed");
-
-    // Convert into a raw pointer and leak it (prevent Rust from freeing the memory)
-    let ptr = c_string.into_raw();
-
-    // into_raw() gives us a *mut c_char, but we need *const
-    ptr as *const c_char
-}
-
 fn main() {
     // Initialize the logger
     match SimpleLogger::new().init() {
@@ -305,7 +294,7 @@ fn main() {
 
             let is_play_pause_click = ffi::GuiButton(
                 play_pause_button_rect.into(),
-                string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
             );
 
             d.draw_texture_pro(
@@ -334,8 +323,10 @@ fn main() {
                 button_size.y,
             );
 
-            let is_reset_click =
-                ffi::GuiButton(reset_button_rect.into(), string_to_c_char("".to_string()));
+            let is_reset_click = ffi::GuiButton(
+                reset_button_rect.into(),
+                utils::string_to_c_char("".to_string()),
+            );
 
             d.draw_texture_pro(
                 &textures.reset_button,
@@ -362,8 +353,8 @@ fn main() {
             let mut new_tick = current_tick;
             let is_timeline_slider_adjusted = ffi::GuiSliderBar(
                 timeline_rect.into(),
-                string_to_c_char("".to_string()),
-                string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
                 &mut new_tick,
                 0.0,
                 nbs_file.header.song_length as f32,
@@ -404,8 +395,8 @@ fn main() {
 
             let is_volume_adjusted = ffi::GuiSliderBar(
                 volume_rect.into(),
-                string_to_c_char("".to_string()),
-                string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
                 &mut volume,
                 0.0,
                 1.0,
@@ -451,7 +442,7 @@ fn main() {
 
             let is_fullscreen_click = ffi::GuiButton(
                 fullscreen_button_rect.into(),
-                string_to_c_char("".to_string()),
+                utils::string_to_c_char("".to_string()),
             );
 
             d.draw_texture_pro(

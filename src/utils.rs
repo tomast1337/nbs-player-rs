@@ -50,6 +50,17 @@ pub fn load_file(file_path: &str) -> Result<Vec<u8>, std::io::Error> {
     }
 }
 
+pub fn string_to_c_char(s: String) -> *const std::ffi::c_char {
+    // Create a CString, which will add a null terminator
+    let c_string = std::ffi::CString::new(s).expect("CString::new failed");
+
+    // Convert into a raw pointer and leak it (prevent Rust from freeing the memory)
+    let ptr = c_string.into_raw();
+
+    // into_raw() gives us a *mut c_char, but we need *const
+    ptr as *const std::ffi::c_char
+}
+
 /*
 pub fn logger_callback(level: raylib::ffi::TraceLogLevel, text: &str) {
     match level {
