@@ -131,8 +131,8 @@ fn main() {
     let mut sec_since_last_mouse_move = 0.0; // Timer for mouse inactivity
     let mut last_mouse_pos = rl.get_mouse_position(); // Last recorded mouse position
     let mut controls_panel_y = window_height; // Initial position of the controls panel (hidden)
-    let control_panel_height = 80.0; // Height of the control panel
     let button_size = Vector2::new(30.0, 30.0); // Size of volume buttons
+    let control_panel_height = button_size.y * 2.0; // Height of the control panel
     let timeline_height = button_size.y; // Height of the timeline slider
     let mut toggle_fullscreen = false; // Fullscreen state
 
@@ -259,11 +259,6 @@ fn main() {
         d.draw_fps(window_width as i32 - 100, 10);
 
         let is_end = elapsed_time >= total_duration;
-
-        // Draw pause state
-        if is_paused && !is_end {
-            draw_pause_message(window_width, window_height, &theme, &textures, &mut d);
-        }
 
         if is_end {
             draw_end_message(
@@ -443,6 +438,37 @@ fn main() {
                 utils::string_to_c_char("".to_string()),
             );
 
+            if is_paused {
+                // daw a button on the middle of the screen to unpause
+                let foo = Rectangle::new(
+                    window_width / 2. - 50.,
+                    window_height / 2. - 50.,
+                    100.,
+                    100.,
+                );
+
+                let is_button_clicked =
+                    ffi::GuiButton(foo.into(), utils::string_to_c_char("".to_string()));
+
+                d.draw_texture_pro(
+                    &textures.play_button,
+                    Rectangle::new(
+                        0.0,
+                        0.0,
+                        textures.play_button.width as f32,
+                        textures.play_button.height as f32,
+                    ),
+                    foo,
+                    Vector2::new(0.0, 0.0),
+                    0.0,
+                    theme.accent_color,
+                );
+
+                if is_button_clicked == 1 {
+                    is_paused = false;
+                }
+            }
+
             d.draw_texture_pro(
                 &textures.fullscreen_button,
                 Rectangle::new(
@@ -496,33 +522,6 @@ fn main() {
             }
         }
     }
-}
-
-fn draw_pause_message(
-    window_width: f32,
-    window_height: f32,
-    theme: &theme::Theme,
-    textures: &textures::Textures,
-    d: &mut RaylibDrawHandle<'_>,
-) {
-    d.draw_texture_pro(
-        &textures.play_button,
-        Rectangle::new(
-            0.0,
-            0.0,
-            textures.play_button.width as f32,
-            textures.play_button.height as f32,
-        ),
-        Rectangle::new(
-            window_width / 2. - 50.,
-            window_height / 2. - 50.,
-            100.,
-            100.,
-        ),
-        Vector2::new(0.0, 0.0),
-        0.0,
-        theme.accent_color,
-    );
 }
 
 fn draw_end_message(
