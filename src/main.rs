@@ -2,8 +2,6 @@ extern crate raylib;
 use raylib::prelude::*;
 use simple_logger::SimpleLogger;
 use std::env;
-use std::ffi::CString;
-use std::ffi::c_char;
 use utils::time_formatter;
 
 mod audio;
@@ -382,7 +380,7 @@ fn main() {
                 0.0,
                 font_size,
                 0.,
-                theme.accent_color.alpha(0.5),
+                theme.accent_color,
             );
 
             // Draw the volume controls
