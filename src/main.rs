@@ -2,6 +2,8 @@ extern crate raylib;
 use raylib::prelude::*;
 use simple_logger::SimpleLogger;
 use std::env;
+use std::ffi::CString;
+use std::ffi::c_char;
 use utils::time_formatter;
 
 mod audio;
@@ -13,6 +15,17 @@ mod song;
 mod textures;
 mod theme;
 mod utils;
+
+fn string_to_c_char(s: String) -> *const c_char {
+    // Create a CString, which will add a null terminator
+    let c_string = CString::new(s).expect("CString::new failed");
+
+    // Convert into a raw pointer and leak it (prevent Rust from freeing the memory)
+    let ptr = c_string.into_raw();
+
+    // into_raw() gives us a *mut c_char, but we need *const
+    ptr as *const c_char
+}
 
 fn main() {
     // Initialize the logger
@@ -86,12 +99,17 @@ fn main() {
     let (mut rl, thread) = raylib::init()
         .size(window_width as i32, window_height as i32)
         .title(&title)
-        //.resizable()
         .build();
     rl.set_target_fps(60);
 
+    rl.gui_enable();
+
     let textures = textures::load_textures(&mut rl, &thread);
     let theme = theme::Theme::from_theme_config(&config.theme);
+    let font = font::load_fonts(config.font_id as usize, &mut rl, &thread);
+
+    rl.gui_set_font(&font);
+
     let (mut all_keys, key_map) = piano::generate_piano_keys();
     let mut piano_props;
     let mut note_blocks: Vec<Vec<note::NoteBlock>> = note::get_note_blocks(&nbs_file);
@@ -110,7 +128,6 @@ fn main() {
 
     let mut is_paused: bool = true;
 
-    let font = font::load_fonts(config.font_id as usize, &mut rl, &thread);
     window_width = rl.get_screen_width() as f32;
     window_height = rl.get_screen_height() as f32;
     piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, &font);
@@ -128,9 +145,8 @@ fn main() {
     let mut last_mouse_pos = rl.get_mouse_position(); // Last recorded mouse position
     let mut controls_panel_y = window_height; // Initial position of the controls panel (hidden)
     let control_panel_height = 80.0; // Height of the control panel
-    let button_size = Vector2::new(40.0, 40.0); // Size of play/pause and reset buttons
-    let volume_button_size = Vector2::new(30.0, 30.0); // Size of volume buttons
-    let timeline_height = 10.0; // Height of the timeline slider
+    let button_size = Vector2::new(30.0, 30.0); // Size of volume buttons
+    let timeline_height = button_size.y; // Height of the timeline slider
     let mut toggle_fullscreen = false; // Fullscreen state
 
     while !rl.window_should_close() {
@@ -274,18 +290,24 @@ fn main() {
             );
         }
 
-        {
+        unsafe {
             let control_panel_rect =
                 Rectangle::new(0.0, controls_panel_y, window_width, control_panel_height);
             d.draw_rectangle_rec(control_panel_rect, Color::BLACK.alpha(0.7));
 
             // Draw the play/pause button
             let play_pause_button_rect = Rectangle::new(
-                button_size.x,
+                button_size.x / 2.,
                 controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
                 button_size.x,
                 button_size.y,
             );
+
+            let is_play_pause_click = ffi::GuiButton(
+                play_pause_button_rect.into(),
+                string_to_c_char("".to_string()),
+            );
+
             d.draw_texture_pro(
                 if is_paused {
                     &textures.play_button
@@ -298,12 +320,7 @@ fn main() {
                     textures.play_button.width as f32,
                     textures.play_button.height as f32,
                 ),
-                Rectangle::new(
-                    play_pause_button_rect.x,
-                    play_pause_button_rect.y,
-                    play_pause_button_rect.width,
-                    play_pause_button_rect.height,
-                ),
+                play_pause_button_rect,
                 Vector2::new(0.0, 0.0),
                 0.0,
                 theme.accent_color,
@@ -311,11 +328,15 @@ fn main() {
 
             // Draw the reset button
             let reset_button_rect = Rectangle::new(
-                button_size.x * 2.0 + 10.0,
+                button_size.x + button_size.x / 2. + 10.0,
                 controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
                 button_size.x,
                 button_size.y,
             );
+
+            let is_reset_click =
+                ffi::GuiButton(reset_button_rect.into(), string_to_c_char("".to_string()));
+
             d.draw_texture_pro(
                 &textures.reset_button,
                 Rectangle::new(
@@ -324,122 +345,85 @@ fn main() {
                     textures.reset_button.width as f32,
                     textures.reset_button.height as f32,
                 ),
-                Rectangle::new(
-                    reset_button_rect.x,
-                    reset_button_rect.y,
-                    reset_button_rect.width,
-                    reset_button_rect.height,
-                ),
+                reset_button_rect,
                 Vector2::new(0.0, 0.0),
                 0.0,
                 theme.accent_color,
             );
 
-            let space_from_buttons = button_size.x * 3.0 + 10.0;
-
             // Draw the timeline slider
             let timeline_rect = Rectangle::new(
-                space_from_buttons + 10.0,
+                reset_button_rect.x + reset_button_rect.width + 10.0,
                 controls_panel_y + control_panel_height / 2.0 - timeline_height / 2.0,
-                window_width - 2. * space_from_buttons - 20.0,
+                window_width - reset_button_rect.width - button_size.x * 5.5 - 30.0,
                 timeline_height,
             );
-            d.draw_rectangle_rec(timeline_rect, Color::BLACK);
 
-            // Draw the current progress on the timeline
-            let progress_width = (elapsed_time / total_duration) * timeline_rect.width;
-            let progress_rect = Rectangle::new(
-                timeline_rect.x,
-                timeline_rect.y,
-                progress_width,
-                timeline_rect.height,
+            let mut new_tick = current_tick;
+            let is_timeline_slider_adjusted = ffi::GuiSliderBar(
+                timeline_rect.into(),
+                string_to_c_char("".to_string()),
+                string_to_c_char("".to_string()),
+                &mut new_tick,
+                0.0,
+                nbs_file.header.song_length as f32,
             );
-            d.draw_rectangle_rec(progress_rect, theme.accent_color);
 
-            // draw the timeline pill
-            let timeline_pill_rect = Rectangle::new(
-                timeline_rect.x + progress_width - 5.0,
-                timeline_rect.y - 5.0,
-                timeline_rect.height + 10.0,
-                timeline_rect.height + 10.0,
+            let current_time_text = format!(
+                "{} / {}",
+                time_formatter(elapsed_time),
+                time_formatter(total_duration)
             );
-            d.draw_texture_pro(
-                &textures.timeline_pill,
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.timeline_pill.width as f32,
-                    textures.timeline_pill.height as f32,
-                ),
-                Rectangle::new(
-                    timeline_pill_rect.x,
-                    timeline_pill_rect.y,
-                    timeline_pill_rect.width,
-                    timeline_pill_rect.height,
-                ),
+
+            // Measure the size of the text
+            let text_size = font.measure_text(&current_time_text, font_size, 0.);
+
+            // Calculate the position to center the text on the timeline
+            let text_x = timeline_rect.x + 10.;
+            let text_y = timeline_rect.y + (timeline_rect.height / 2.0) - (text_size.y / 2.0);
+
+            // Draw the text centered on the timeline
+            d.draw_text_pro(
+                &font,
+                &current_time_text,
+                Vector2::new(text_x, text_y),
                 Vector2::new(0.0, 0.0),
                 0.0,
+                font_size,
+                0.,
                 theme.accent_color,
             );
 
             // Draw the volume controls
-            let volume_plus_rect = Rectangle::new(
-                space_from_buttons + 20.0 + timeline_rect.width,
-                controls_panel_y + control_panel_height / 2.0 - volume_button_size.y / 2.0,
-                volume_button_size.x,
-                volume_button_size.y,
-            );
-            d.draw_texture_pro(
-                &textures.volume_plus_button,
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.volume_plus_button.width as f32,
-                    textures.volume_plus_button.height as f32,
-                ),
-                Rectangle::new(
-                    volume_plus_rect.x,
-                    volume_plus_rect.y,
-                    volume_plus_rect.width,
-                    volume_plus_rect.height,
-                ),
-                Vector2::new(0.0, 0.0),
-                0.0,
-                theme.accent_color,
+            let volume_rect = Rectangle::new(
+                timeline_rect.x + timeline_rect.width + 10.0,
+                controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
+                button_size.x * 2.0,
+                button_size.y,
             );
 
-            let volume_minus_rect = Rectangle::new(
-                volume_plus_rect.x + volume_plus_rect.width + 10.0,
-                volume_plus_rect.y,
-                volume_button_size.x,
-                volume_button_size.y,
-            );
-            d.draw_texture_pro(
-                &textures.volume_minus_button,
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.volume_minus_button.width as f32,
-                    textures.volume_minus_button.height as f32,
-                ),
-                Rectangle::new(
-                    volume_minus_rect.x,
-                    volume_minus_rect.y,
-                    volume_minus_rect.width,
-                    volume_minus_rect.height,
-                ),
-                Vector2::new(0.0, 0.0),
+            let is_volume_adjusted = ffi::GuiSliderBar(
+                volume_rect.into(),
+                string_to_c_char("".to_string()),
+                string_to_c_char("".to_string()),
+                &mut volume,
                 0.0,
-                theme.accent_color,
+                1.0,
             );
 
-            // fullscreen button
+            // Draw the fullscreen button
             let fullscreen_button_rect = Rectangle::new(
-                volume_minus_rect.x + volume_minus_rect.width + 10.0,
-                volume_minus_rect.y,
-                volume_button_size.x,
-                volume_button_size.y,
+                volume_rect.x + volume_rect.width + 10.0,
+                volume_rect.y,
+                button_size.x,
+                button_size.y,
             );
+
+            let is_fullscreen_click = ffi::GuiButton(
+                fullscreen_button_rect.into(),
+                string_to_c_char("".to_string()),
+            );
+
             d.draw_texture_pro(
                 &textures.fullscreen_button,
                 Rectangle::new(
@@ -448,106 +432,49 @@ fn main() {
                     textures.fullscreen_button.width as f32,
                     textures.fullscreen_button.height as f32,
                 ),
-                Rectangle::new(
-                    fullscreen_button_rect.x,
-                    fullscreen_button_rect.y,
-                    fullscreen_button_rect.width,
-                    fullscreen_button_rect.height,
-                ),
+                fullscreen_button_rect,
                 Vector2::new(0.0, 0.0),
                 0.0,
                 theme.accent_color,
             );
-            // Check for button clicks
-            if d.is_mouse_button_pressed(raylib::consts::MouseButton::MOUSE_BUTTON_LEFT) {
-                let mouse_pos = d.get_mouse_position();
 
-                // Check if the play/pause button was clicked
-                if play_pause_button_rect.check_collision_point_rec(mouse_pos) {
-                    is_paused = !is_paused;
-                }
+            if is_play_pause_click == 1 {
+                is_paused = !is_paused;
+            }
 
-                // Check if the reset button was clicked
-                if reset_button_rect.check_collision_point_rec(mouse_pos) {
-                    elapsed_time = 0.;
-                    played_ticks = vec![false; nbs_file.header.song_length as usize];
-                    note_blocks = note::get_note_blocks(&nbs_file);
-                    is_paused = false;
-                }
+            if is_reset_click == 1 {
+                elapsed_time = 0.;
+                played_ticks = vec![false; nbs_file.header.song_length as usize];
+                is_paused = true;
+            }
 
-                // Check if the volume plus button was clicked
-                if volume_plus_rect.check_collision_point_rec(mouse_pos) {
-                    volume += 0.1;
-                    if volume > 1.0 {
-                        volume = 1.0;
-                    }
-                    //audio_engine.set_global_volume(volume);
-                }
-
-                // Check if the volume minus button was clicked
-                if volume_minus_rect.check_collision_point_rec(mouse_pos) {
-                    volume -= 0.1;
-                    if volume < 0.0 {
-                        volume = 0.0;
-                    }
-                    //audio_engine.set_global_volume(volume);
-                }
-
-                // Check if the timeline was clicked
-                if timeline_rect.check_collision_point_rec(mouse_pos) {
-                    let new_x = mouse_pos.x - timeline_rect.x;
-                    let new_progress = new_x / timeline_rect.width;
-                    elapsed_time = new_progress * total_duration;
-                    current_tick = elapsed_time * notes_per_second;
-                    // set all played ticks to false beyond the current tick and all ticks before as played
-                    for i in 0..(current_tick as f32).floor() as usize {
+            if is_timeline_slider_adjusted == 1 {
+                // set all played ticks to false beyond the current tick and all ticks before as played
+                current_tick = new_tick;
+                for i in 0..nbs_file.header.song_length as usize {
+                    if i < current_tick as usize {
                         played_ticks[i] = true;
-                    }
-                    for i in (current_tick as f32).floor() as usize..played_ticks.len() {
+                    } else {
                         played_ticks[i] = false;
                     }
                 }
-
-                // Check if the fullscreen button was clicked
-                if fullscreen_button_rect.check_collision_point_rec(mouse_pos) {
-                    toggle_fullscreen = !toggle_fullscreen;
-                }
+                elapsed_time = new_tick / notes_per_second;
             }
 
-            // check left mouse button pressed
-            if d.is_mouse_button_down(raylib::consts::MouseButton::MOUSE_BUTTON_LEFT) {
-                // Check if the timeline was clicked
-                if timeline_rect.check_collision_point_rec(current_mouse_pos) {
-                    let new_x = current_mouse_pos.x - timeline_rect.x;
-                    let new_progress = new_x / timeline_rect.width;
-                    elapsed_time = new_progress * total_duration;
-                    current_tick = elapsed_time * notes_per_second;
-                    // set all played ticks to false beyond the current tick and all ticks before as played
-                    for i in 0..(current_tick as f32).floor() as usize {
-                        played_ticks[i] = true;
-                    }
-                    for i in (current_tick as f32).floor() as usize..played_ticks.len() {
-                        played_ticks[i] = false;
-                    }
-                }
+            if is_volume_adjusted == 1 {
+                raylib_audio.set_master_volume(volume);
             }
 
-            // Draw the current time and total duration
-            let current_time_text = format!(
-                "{} / {}",
-                time_formatter(elapsed_time),
-                time_formatter(total_duration)
-            );
-            d.draw_text_pro(
-                &font,
-                &current_time_text,
-                Vector2::new(timeline_rect.x, timeline_rect.y - 25.),
-                Vector2::new(0.0, 0.0),
-                0.0,
-                font_size,
-                0.,
-                theme.accent_color,
-            );
+            if is_fullscreen_click == 1 {
+                toggle_fullscreen = !toggle_fullscreen;
+            }
+
+            // while the cursor is in the control panel, do not move the panel down
+            if control_panel_rect
+                .check_collision_point_rec(Vector2::new(last_mouse_pos.x, last_mouse_pos.y))
+            {
+                sec_since_last_mouse_move = 0.0;
+            }
         }
     }
 }

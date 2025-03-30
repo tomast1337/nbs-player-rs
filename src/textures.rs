@@ -6,10 +6,7 @@ pub struct Textures {
     pub play_button: Texture2D,
     pub pause_button: Texture2D,
     pub reset_button: Texture2D,
-    pub volume_plus_button: Texture2D,
-    pub volume_minus_button: Texture2D,
     pub fullscreen_button: Texture2D,
-    pub timeline_pill: Texture2D,
 }
 
 fn load_from_mem(
@@ -59,31 +56,10 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
         ".png",
     );
 
-    let volume_plus_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/volume_plus.png"),
-        ".png",
-    );
-
-    let volume_minus_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/volume_minus.png"),
-        ".png",
-    );
-
     let fullscreen_button = load_from_mem(
         rl,
         thread,
         include_bytes!("../assets/textures/fullscreen.png"),
-        ".png",
-    );
-
-    let timeline_pill = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/pill.png"),
         ".png",
     );
 
@@ -93,9 +69,6 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
         play_button,
         pause_button,
         reset_button,
-        volume_plus_button,
-        volume_minus_button,
         fullscreen_button,
-        timeline_pill,
     }
 }
