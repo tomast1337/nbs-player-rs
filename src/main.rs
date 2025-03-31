@@ -1,4 +1,6 @@
 extern crate raylib;
+use raylib::prelude::GuiControl::*;
+use raylib::prelude::GuiControlProperty::*;
 use raylib::prelude::*;
 use simple_logger::SimpleLogger;
 use std::env;
@@ -135,6 +137,8 @@ fn main() {
     let control_panel_height = button_size.y * 2.0; // Height of the control panel
     let timeline_height = button_size.y; // Height of the timeline slider
     let mut toggle_fullscreen = false; // Fullscreen state
+
+    set_gui_style(&mut rl, &theme);
 
     while !rl.window_should_close() {
         if toggle_fullscreen {
@@ -344,7 +348,7 @@ fn main() {
             );
 
             let mut new_tick = current_tick;
-            let is_timeline_slider_adjusted = ffi::GuiSliderBar(
+            let is_timeline_slider_adjusted = ffi::GuiSlider(
                 timeline_rect.into(),
                 utils::string_to_c_char("".to_string()),
                 utils::string_to_c_char("".to_string()),
@@ -522,6 +526,91 @@ fn main() {
             }
         }
     }
+}
+
+fn set_gui_style(rl: &mut RaylibHandle, theme: &theme::Theme) {
+    // ------------------------------BUTTON STYLE------------------------------
+    rl.gui_set_style(
+        BUTTON,
+        BASE_COLOR_NORMAL,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        BASE_COLOR_FOCUSED,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        BASE_COLOR_PRESSED,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        TEXT_COLOR_NORMAL,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        BORDER_COLOR_NORMAL,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        BORDER_COLOR_PRESSED,
+        theme.accent_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        BUTTON,
+        BORDER_COLOR_FOCUSED,
+        theme.accent_color.color_to_int(),
+    );
+    // ------------------------------SLIDER STYLE------------------------------
+    rl.gui_set_style(
+        SLIDER,
+        BASE_COLOR_NORMAL,
+        theme.background_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        BASE_COLOR_FOCUSED,
+        theme.black_key_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        BASE_COLOR_PRESSED,
+        theme.white_key_color.brightness(0.9).color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        BORDER_COLOR_NORMAL,
+        Color::WHITE.alpha(0.).color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        BORDER_COLOR_PRESSED,
+        theme.accent_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        BORDER_COLOR_FOCUSED,
+        theme.accent_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        TEXT_COLOR_NORMAL,
+        theme.white_key_color.alpha(1.).color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        TEXT_COLOR_FOCUSED,
+        theme.accent_color.color_to_int(),
+    );
+    rl.gui_set_style(
+        SLIDER,
+        TEXT_COLOR_PRESSED,
+        theme.accent_color.color_to_int(),
+    );
 }
 
 fn draw_end_message(
