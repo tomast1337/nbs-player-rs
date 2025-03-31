@@ -329,6 +329,7 @@
                     JSON.stringify(arguments),
                 ],
                 noInitialRun: true,
+                noExitRuntime: false, // Allow the runtime to exit
                 preInit: async function () {
                     updateUI();
 
@@ -360,6 +361,25 @@
         <div class="dependencies">
             <p>Source code available on <a href="https://github.com/tomast1337/nbs-player-rs" target="_blank">GitHub</a>
         </div>
+        <p>
+            Visit <a href="https://noteblock.world" target="_blank">
+                noteblock.world
+            </a> for more music made in Note block Studio.
+        </p>
+        <p>
+            This project is a work in progress. If you have any suggestions or issues, please open an issue on GitHub.
+        </p>
+        <!--
+                <button id="abort">This is just an example of killing the wasm run time</button>
+        <script>
+            const fullscreenBtn = document.getElementById('abort');
+            fullscreenBtn.addEventListener('click', () => {
+                // abort the wasm run time
+                Module.abort();
+            });
+        </script>
+        -->
+
     </footer>
 </body>
 
