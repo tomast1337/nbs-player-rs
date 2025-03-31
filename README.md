@@ -24,20 +24,40 @@ A web version is available at <https://tomast1337.github.io/nbs-player-rs>, it a
 you need to have the Emscripten SDK installed. You can find instructions on how to install it [here](https://emscripten.org/docs/getting_started/downloads.html).
 After installing the SDK, you need to activate it. You can do this by running the following command in your terminal:
 
+On Linux or MacOS:
+
 ```bash
 EMCC_CFLAGS="-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sASYNCIFY" cargo build --release --target wasm32-unknown-emscripten
 ```
+
+On Windows:
+
+```bash
+set EMCC_CFLAGS=-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sASYNCIFY
+cargo build --release --target wasm32-unknown-emscripten
+```
+
+After building the project, you can run the following command to start a local server and serve the files:
+
+With node.js:
 
 ```bash
 npx serve .
 ```
 
-## Running locally
+With python:
+
+```bash
+python3 -m http.server
+```
+
+Then, open your browser the link given by the server.
+
+## Compile and Running for Native
 
 ```bash
 cargo run -- "$(cat <<EOF
 {
-  "song_url": "./test-assets/turkish_march.nbs",
   "font_id": 5,
   "window_width": 1280,
   "window_height": 720,
@@ -54,6 +74,8 @@ cargo run -- "$(cat <<EOF
 EOF
 )"
 ```
+
+The program will always look for a file called `song.nbsx` in the current working directory, so you need to place your song there.
 
 You can change the arguments as you like.
 
