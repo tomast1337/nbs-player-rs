@@ -1,3 +1,22 @@
+# Note Block Studio Rust Player
+
+This is a Rust player for the Note Block Studio format. It is a work in progress and is not yet complete.
+
+A web version is available at <https://tomast1337.github.io/nbs-player-rs>, it also demostrate a way to make playlists commanded by the browser.
+
+## Features
+
+- Play Note Block Studio songs
+- Support for custom instruments
+- Support for custom themes and fonts
+- Play songs in a web browser using WebAssembly
+- Support for custom key bindings
+
+## Requirements
+
+- Rust 1.85.0 or later
+- Emscripten SDK (for WebAssembly)
+
 # Run development environment
 
 ## Compile and Running for WebAssembly
@@ -13,7 +32,7 @@ EMCC_CFLAGS="-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sASYNCIFY" cargo build -
 npx serve .
 ```
 
-# Running locally
+## Running locally
 
 ```bash
 cargo run -- "$(cat <<EOF
@@ -37,3 +56,8 @@ EOF
 ```
 
 You can change the arguments as you like.
+
+# License
+
+This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE) file for details.
+The assets are licensed under different licenses, please check the `test-assets` folder for more information.
