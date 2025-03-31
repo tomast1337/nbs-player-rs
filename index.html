@@ -44,6 +44,10 @@
             background-color: #00000000;
             box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
             margin-bottom: 20px;
+            /* no texture filter */
+            image-rendering: -webkit-optimize-contrast;
+            image-rendering: crisp-edges;
+            image-rendering: pixelated;
         }
 
         /* Style when in fullscreen */
@@ -297,8 +301,8 @@
                 fullscreen_window_height = temp;
             }
 
-            fullscreen_window_width = Math.floor(fullscreen_window_width * 0.5);
-            fullscreen_window_height = Math.floor(fullscreen_window_height * 0.5);
+            fullscreen_window_width = Math.floor(fullscreen_window_width * 0.75);
+            fullscreen_window_height = Math.floor(fullscreen_window_height * 0.75);
 
             // 720p resolution
             const window_width = 1280;
