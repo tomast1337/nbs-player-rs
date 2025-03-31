@@ -1,5 +1,7 @@
 # Note Block Studio Rust Player
 
+![image](https://github.com/user-attachments/assets/6db2b940-c75f-408c-8398-eeead55f452f)
+
 This is a Rust player for the Note Block Studio format. It is a work in progress and is not yet complete.
 
 A web version is available at <https://tomast1337.github.io/nbs-player-rs>, it also demostrate a way to make playlists commanded by the browser.
