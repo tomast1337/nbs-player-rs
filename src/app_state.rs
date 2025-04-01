@@ -131,6 +131,7 @@ pub struct AppState<'a> {
     pub theme: theme::Theme,
     pub font: Font,
     pub font_size: f32,
+    pub volume: f32,
     pub song_state: SongState<'a>,
     pub piano_state: PianoState,
     pub note_state: NoteState,
@@ -243,12 +244,13 @@ impl<'a> AppState<'a> {
             window_height,
             textures,
             theme,
-            font, //  cannot move out of font because it is borrowed move out of font occurs here
+            font,
             song_state,
             piano_state,
             note_state,
             controls_state,
             font_size: 0.0,
+            volume: 0.5,
         };
 
         rl.gui_set_font(&app_state.font);
@@ -567,7 +569,6 @@ impl<'a> AppState<'a> {
         let textures = &self.textures;
         let theme = &self.theme;
         let nbs_file = &self.song_state.nbs_file;
-        let mut volume = 0.5;
         let notes_per_second = self.song_state.notes_per_second;
         let font = &self.font;
         let font_size = self.font_size;
@@ -647,11 +648,12 @@ impl<'a> AppState<'a> {
                 volume_rect.into(),
                 utils::string_to_c_char("".to_string()),
                 utils::string_to_c_char("".to_string()),
-                &mut volume,
+                &mut self.volume,
                 0.0,
                 1.0,
             );
 
+            let volume = self.volume;
             let volume_texture = if volume == 0.0 {
                 &textures.vol_000
             } else if volume <= 0.25 {
