@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use raylib::prelude::*;
 
 use crate::app_state::AppState;
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct PianoProps {
     pub key_spacing: f32,
     pub white_key_width: f32,
@@ -14,7 +14,7 @@ pub struct PianoProps {
     pub font_size_black: f32,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone)]
 pub struct PianoKey {
     pub key: u8,
     pub label: String,

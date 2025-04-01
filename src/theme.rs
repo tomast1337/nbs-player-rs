@@ -2,7 +2,7 @@ use crate::config::ThemeConfig;
 use raylib::prelude::GuiControl::*;
 use raylib::prelude::GuiControlProperty::*;
 use raylib::prelude::*;
-
+#[derive(Debug, Clone)]
 pub struct Theme {
     pub background_color: Color,
     pub accent_color: Color,

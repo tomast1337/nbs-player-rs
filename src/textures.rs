@@ -1,5 +1,6 @@
 use raylib::prelude::*;
 
+#[derive(Debug)]
 pub struct Textures {
     pub note_texture: Texture2D,
     pub piano_key_texture: Texture2D,

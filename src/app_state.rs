@@ -12,6 +12,7 @@ use crate::textures;
 use crate::theme;
 use crate::utils;
 
+#[derive(Debug, Clone)]
 pub struct PianoState {
     pub all_keys: Vec<piano::PianoKey>,
     pub key_map: std::collections::HashMap<u8, usize>,
@@ -43,6 +44,7 @@ impl PianoState {
         piano::update_key_animation(&mut self.all_keys, delta_time);
     }
 }
+#[derive(Debug, Clone)]
 pub struct SongState<'a> {
     pub note_blocks: Vec<Vec<note::NoteBlock>>, // Note blocks for each tick
     pub current_tick: f32,                      // Current tick of the song
@@ -89,6 +91,7 @@ impl SongState<'_> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct ControlsState {
     pub controls_close_time: f32, // Time in seconds to wait before closing controls
     pub sec_since_last_mouse_move: f32, // Timer for mouse inactivity
@@ -142,6 +145,7 @@ impl ControlsState {
     }
 }
 
+#[derive(Debug)]
 pub struct AppState<'a> {
     pub window_width: f32,
     pub window_height: f32,
