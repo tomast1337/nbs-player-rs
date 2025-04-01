@@ -44,22 +44,22 @@ impl PianoState {
     }
 }
 pub struct SongState<'a> {
-    pub note_blocks: Vec<Vec<note::NoteBlock>>,
-    pub current_tick: f32,
-    pub elapsed_time: f32,
-    pub note_dim: f32,
-    pub font_size_3: f32,
-    pub font_size_2: f32,
-    pub key_spacing: f32,
-    pub played_ticks: Vec<bool>,
-    pub instrument_colors: std::collections::HashMap<u8, Color>,
-    pub is_paused: bool,
-    pub nbs_file: &'a NbsFile,
-    pub extra_sounds: Vec<(&'a [u8], f64)>,
-    pub title: String,
-    pub notes_per_second: f32,
-    pub total_duration: f32,
-    pub is_end: bool,
+    pub note_blocks: Vec<Vec<note::NoteBlock>>, // Note blocks for each tick
+    pub current_tick: f32,                      // Current tick of the song
+    pub elapsed_time: f32,                      // Elapsed time since the song started
+    pub note_dim: f32,                          // Dimension of the note blocks
+    pub font_size_3: f32,                       // Font size for the note blocks with sharp notes
+    pub font_size_2: f32,                       // Font size for the note blocks with flat notes
+    pub key_spacing: f32,                       // Spacing between keys
+    pub played_ticks: Vec<bool>,                // Vector to track played ticks
+    pub instrument_colors: std::collections::HashMap<u8, Color>, // Map of instrument colors
+    pub is_paused: bool,                        // Flag to check if the song is paused
+    pub nbs_file: &'a NbsFile,                  // Reference to the NBS file
+    pub extra_sounds: Vec<(&'a [u8], f64)>,     // Extra sounds to be played
+    pub title: String,                          // Title of the song
+    pub notes_per_second: f32,                  // Notes per second based on the tempo
+    pub total_duration: f32,                    // Total duration of the song
+    pub is_end: bool,                           // Flag to check if the song has ended
 }
 
 impl SongState<'_> {
@@ -173,8 +173,6 @@ impl<'a> AppState<'a> {
             std::process::exit(1);
         }
 
-        /* -----------------------------SongState---------------------------- */
-
         let nbs_file = &nbs_data.song;
         let extra_sounds = &nbs_data.extra_sounds;
 
@@ -253,28 +251,32 @@ impl<'a> AppState<'a> {
     pub fn update_window_dimensions(&mut self, rl: &mut RaylibHandle) {
         let new_width = rl.get_screen_width() as f32;
         let new_height = rl.get_screen_height() as f32;
+        let window_width = self.window_width;
+        let window_height = self.window_height;
+        let song_state = &mut self.song_state;
+        let font = &self.font;
 
-        if self.window_width != new_width {
+        if window_width != new_width {
             self.window_width = new_width;
             self.piano_state.piano_props = piano::initialize_piano_dimensions(
                 self.window_width,
                 &self.piano_state.all_keys,
                 &self.font,
             );
-            self.song_state.note_dim = self.piano_state.piano_props.white_key_width;
-            self.song_state.key_spacing = self.piano_state.piano_props.key_spacing;
+            song_state.note_dim = self.piano_state.piano_props.white_key_width;
+            song_state.key_spacing = self.piano_state.piano_props.key_spacing;
 
             let min_font_size = 18.;
             let max_font_size = 40.;
             self.font_size = (self.window_width / 64.0).clamp(min_font_size, max_font_size as f32);
 
             let (font_size_3, font_size_2) =
-                note::calculate_note_block_font_sizes(self.song_state.note_dim, &self.font);
+                note::calculate_note_block_font_sizes(song_state.note_dim, &font);
 
-            self.song_state.font_size_3 = font_size_3;
-            self.song_state.font_size_2 = font_size_2;
+            song_state.font_size_3 = font_size_3;
+            song_state.font_size_2 = font_size_2;
         }
-        if self.window_height != new_height {
+        if window_height != new_height {
             self.window_height = new_height;
         }
     }
