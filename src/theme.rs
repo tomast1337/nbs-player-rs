@@ -1,6 +1,7 @@
-use raylib::prelude::*;
-
 use crate::config::ThemeConfig;
+use raylib::prelude::GuiControl::*;
+use raylib::prelude::GuiControlProperty::*;
+use raylib::prelude::*;
 
 pub struct Theme {
     pub background_color: Color,
@@ -19,6 +20,39 @@ impl Theme {
         let g = u8::from_str_radix(&color_str[2..4], 16).unwrap_or(0);
         let b = u8::from_str_radix(&color_str[4..6], 16).unwrap_or(0);
         Color::new(r, g, b, 255)
+    }
+
+    pub fn set_gui_style(&self, rl: &mut RaylibHandle) {
+        let base_w = Color::WHITE.alpha(0.).color_to_int();
+        let accent_color = self.accent_color.color_to_int();
+        let background_color = self.background_color.color_to_int();
+        let black_key_color = self.black_key_color.color_to_int();
+        // ------------------------------BUTTON STYLE------------------------------
+        rl.gui_set_style(BUTTON, BASE_COLOR_NORMAL, base_w);
+        rl.gui_set_style(BUTTON, BASE_COLOR_FOCUSED, base_w);
+        rl.gui_set_style(BUTTON, BASE_COLOR_PRESSED, base_w);
+        rl.gui_set_style(BUTTON, TEXT_COLOR_NORMAL, base_w);
+        rl.gui_set_style(BUTTON, BORDER_COLOR_NORMAL, base_w);
+        rl.gui_set_style(BUTTON, BORDER_COLOR_PRESSED, accent_color);
+        rl.gui_set_style(BUTTON, BORDER_COLOR_FOCUSED, accent_color);
+        // ------------------------------SLIDER STYLE------------------------------
+        rl.gui_set_style(SLIDER, BASE_COLOR_NORMAL, background_color);
+        rl.gui_set_style(SLIDER, BASE_COLOR_FOCUSED, black_key_color);
+        rl.gui_set_style(
+            SLIDER,
+            BASE_COLOR_PRESSED,
+            self.white_key_color.brightness(0.9).color_to_int(),
+        );
+        rl.gui_set_style(SLIDER, BORDER_COLOR_NORMAL, base_w);
+        rl.gui_set_style(SLIDER, BORDER_COLOR_PRESSED, accent_color);
+        rl.gui_set_style(SLIDER, BORDER_COLOR_FOCUSED, accent_color);
+        rl.gui_set_style(
+            SLIDER,
+            TEXT_COLOR_NORMAL,
+            self.white_key_color.alpha(1.).color_to_int(),
+        );
+        rl.gui_set_style(SLIDER, TEXT_COLOR_FOCUSED, self.accent_color.color_to_int());
+        rl.gui_set_style(SLIDER, TEXT_COLOR_PRESSED, self.accent_color.color_to_int());
     }
 
     pub fn from_theme_config(theme_config: &ThemeConfig) -> Self {

@@ -1,7 +1,5 @@
 extern crate raylib;
 use nbs_rs::NbsFile;
-use raylib::prelude::GuiControl::*;
-use raylib::prelude::GuiControlProperty::*;
 use raylib::prelude::*;
 
 use crate::audio;
@@ -20,6 +18,15 @@ pub struct PianoState {
     pub piano_props: piano::PianoProps,
 }
 impl PianoState {
+    fn new(window_width: f32, font: &Font) -> Self {
+        let (all_keys, key_map) = piano::generate_piano_keys();
+        let piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, font);
+        PianoState {
+            all_keys,
+            key_map,
+            piano_props,
+        }
+    }
     fn reset_keys(&mut self) {
         for key in &mut self.all_keys {
             key.is_pressed = false;
@@ -41,16 +48,14 @@ pub struct SongState<'a> {
     pub current_tick: f32,
     pub elapsed_time: f32,
     pub note_dim: f32,
+    pub font_size_3: f32,
+    pub font_size_2: f32,
     pub key_spacing: f32,
     pub played_ticks: Vec<bool>,
     pub instrument_colors: std::collections::HashMap<u8, Color>,
     pub is_paused: bool,
-
     pub nbs_file: &'a NbsFile,
-    //pub nbs_data: &'a song::SongData<'a>,
     pub extra_sounds: Vec<(&'a [u8], f64)>,
-    //pub song_name: String,
-    //pub song_author: String,
     pub title: String,
     pub notes_per_second: f32,
     pub total_duration: f32,
@@ -175,15 +180,15 @@ impl<'a> AppState<'a> {
 
         let song_name: String = match String::from_utf8(nbs_file.header.song_name.clone()) {
             Ok(name) => name,
-            Err(_err) => "Error converting song name".to_string(),
+            Err(_err) => "Unknown".to_string(),
         };
         let song_author: String = match String::from_utf8(nbs_file.header.song_author.clone()) {
             Ok(author) => author,
-            Err(_err) => "Error converting song author".to_string(),
+            Err(_err) => "Unknown".to_string(),
         };
         let title: String = format!("{} - {}", song_name, song_author);
 
-        let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
+        let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.;
         let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
         /* ------------------------------Raylib------------------------------ */
@@ -197,149 +202,52 @@ impl<'a> AppState<'a> {
         let theme = theme::Theme::from_theme_config(&config.theme);
         let font = font::load_fonts(config.font_id as usize, &mut rl, &thread);
 
-        rl.set_target_fps(60);
+        rl.set_target_fps(config.target_fps.unwrap_or(60));
         rl.gui_enable();
 
         /* ----------------------------Piano State--------------------------- */
-        let (all_keys, key_map) = piano::generate_piano_keys();
-        let piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, &font);
-        let piano_state = PianoState {
-            all_keys,
-            key_map,
-            piano_props,
-        };
+        let piano_state = PianoState::new(window_width, &font);
 
         /* ----------------------------Note State---------------------------- */
+        let note_dim = piano_state.piano_props.white_key_width;
+        let (font_size_3, font_size_2) = note::calculate_note_block_font_sizes(note_dim, &font);
         let song_state = SongState {
-            nbs_file,
-            //nbs_data,
-            extra_sounds: extra_sounds.to_vec(),
-            //song_name,
-            //song_author,
-            title,
-            notes_per_second,
-            total_duration,
-            is_end: false,
-
             note_blocks: note::get_note_blocks(&nbs_file),
             current_tick: 0.,
             elapsed_time: 0.,
-            note_dim: piano_state.piano_props.white_key_width,
+            note_dim,
+            font_size_3,
+            font_size_2,
             key_spacing: piano_state.piano_props.key_spacing,
             played_ticks: vec![false; nbs_file.header.song_length as usize],
             instrument_colors: note::generate_instrument_palette(),
             is_paused: true,
+            nbs_file,
+            extra_sounds: extra_sounds.to_vec(),
+            title,
+            notes_per_second,
+            total_duration,
+            is_end: false,
         };
-
-        log::debug!("Loaded note blocks");
-        log::debug!("Loaded {} notes", song_state.note_blocks.len());
         /* --------------------------Controls State-------------------------- */
         let controls_state = ControlsState::new(window_height);
 
-        /* Gui style */
-        AppState::set_gui_style(&mut rl, &theme);
-        /* */
         let app_state = AppState {
             window_width,
             window_height,
             textures,
             theme,
             font,
+            font_size: 0.0,
+            volume: config.initial_volume.unwrap_or(0.5),
             song_state,
             piano_state,
             controls_state,
-            font_size: 0.0,
-            volume: 0.5,
         };
 
-        rl.gui_set_font(&app_state.font);
-
+        rl.gui_set_font(&app_state.font); // Set the font for the GUI
+        app_state.theme.set_gui_style(&mut rl); // Apply the theme to the GUI
         return (app_state, rl, thread);
-    }
-
-    fn set_gui_style(rl: &mut RaylibHandle, theme: &theme::Theme) {
-        // ------------------------------BUTTON STYLE------------------------------
-        rl.gui_set_style(
-            BUTTON,
-            BASE_COLOR_NORMAL,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            BASE_COLOR_FOCUSED,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            BASE_COLOR_PRESSED,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            TEXT_COLOR_NORMAL,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            BORDER_COLOR_NORMAL,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            BORDER_COLOR_PRESSED,
-            theme.accent_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            BUTTON,
-            BORDER_COLOR_FOCUSED,
-            theme.accent_color.color_to_int(),
-        );
-        // ------------------------------SLIDER STYLE------------------------------
-        rl.gui_set_style(
-            SLIDER,
-            BASE_COLOR_NORMAL,
-            theme.background_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            BASE_COLOR_FOCUSED,
-            theme.black_key_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            BASE_COLOR_PRESSED,
-            theme.white_key_color.brightness(0.9).color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            BORDER_COLOR_NORMAL,
-            Color::WHITE.alpha(0.).color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            BORDER_COLOR_PRESSED,
-            theme.accent_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            BORDER_COLOR_FOCUSED,
-            theme.accent_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            TEXT_COLOR_NORMAL,
-            theme.white_key_color.alpha(1.).color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            TEXT_COLOR_FOCUSED,
-            theme.accent_color.color_to_int(),
-        );
-        rl.gui_set_style(
-            SLIDER,
-            TEXT_COLOR_PRESSED,
-            theme.accent_color.color_to_int(),
-        );
     }
 
     pub fn update_window_dimensions(&mut self, rl: &mut RaylibHandle) {
@@ -355,14 +263,20 @@ impl<'a> AppState<'a> {
             );
             self.song_state.note_dim = self.piano_state.piano_props.white_key_width;
             self.song_state.key_spacing = self.piano_state.piano_props.key_spacing;
+
+            let min_font_size = 18.;
+            let max_font_size = 40.;
+            self.font_size = (self.window_width / 64.0).clamp(min_font_size, max_font_size as f32);
+
+            let (font_size_3, font_size_2) =
+                note::calculate_note_block_font_sizes(self.song_state.note_dim, &self.font);
+
+            self.song_state.font_size_3 = font_size_3;
+            self.song_state.font_size_2 = font_size_2;
         }
         if self.window_height != new_height {
             self.window_height = new_height;
         }
-
-        let min_font_size = 18.;
-        let max_font_size = 40.;
-        self.font_size = (self.window_width / 64.0).clamp(min_font_size, max_font_size as f32);
     }
 
     pub fn toggle_fullscreen(&mut self, rl: &mut RaylibHandle) {
@@ -434,7 +348,6 @@ impl<'a> AppState<'a> {
                 .get(self.song_state.current_tick as usize)
             {
                 audio_engine.play_tick(notes);
-                //sound.play();
                 self.song_state.played_ticks
                     [(self.song_state.current_tick as f32).floor() as usize] = true;
             }

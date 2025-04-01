@@ -122,10 +122,6 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     // Count notes being rendered
     let mut notes_rendered = 0;
 
-    // Calculate font size to fit within the note block
-    let font_size_3 = calculate_font_size(note_dim, font, 3);
-    let font_size_2 = calculate_font_size(note_dim, font, 4);
-
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;
         if let Some(notes) = note_blocks.get(tick as usize) {
@@ -189,9 +185,9 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
 
                         // Center text horizontally and vertically within the note block
                         let font_size = if text.len() > 2 {
-                            font_size_3
+                            app_state.song_state.font_size_3
                         } else {
-                            font_size_2
+                            app_state.song_state.font_size_2
                         };
                         let text_dim = font.measure_text(text, font_size, 0.);
                         let text_x = x_pos + window_width / 2.0 - text_dim.x / 2.;
@@ -218,7 +214,6 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     }
     notes_rendered
 }
-
 fn calculate_font_size(note_dim: f32, font: &Font, label_size: usize) -> f32 {
     let max_font_size = 30.;
     let mut font_size = max_font_size;
@@ -238,4 +233,11 @@ fn calculate_font_size(note_dim: f32, font: &Font, label_size: usize) -> f32 {
         text_width = font.measure_text(&label, font_size, 0.).x;
     }
     font_size
+}
+
+pub fn calculate_note_block_font_sizes(note_dim: f32, font: &Font) -> (f32, f32) {
+    // Calculate font size to fit within the note block
+    let font_size_3 = calculate_font_size(note_dim, font, 3);
+    let font_size_2 = calculate_font_size(note_dim, font, 4);
+    (font_size_3, font_size_2)
 }

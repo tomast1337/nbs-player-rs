@@ -17,4 +17,6 @@ pub struct AppConfig {
     pub window_width: u32,
     pub window_height: u32,
     pub theme: ThemeConfig,
+    pub initial_volume: Option<f32>,
+    pub target_fps: Option<u32>,
 }
