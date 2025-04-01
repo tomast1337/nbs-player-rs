@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ThemeConfig {
     pub background_color: String,
     pub accent_color: String,
@@ -11,7 +11,7 @@ pub struct ThemeConfig {
     pub black_text_key_color: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AppConfig {
     pub font_id: u32,
     pub window_width: u32,

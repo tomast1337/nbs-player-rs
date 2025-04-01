@@ -1,15 +1,15 @@
 use std::collections::HashMap;
 
-use crate::theme::Theme;
 use raylib::prelude::*;
+
+use crate::app_state::AppState;
 #[derive(Debug)]
-pub struct PianoProps<'a> {
+pub struct PianoProps {
     pub key_spacing: f32,
     pub white_key_width: f32,
     pub white_key_height: f32,
     pub black_key_width: f32,
     pub black_key_height: f32,
-    pub font: &'a Font,
     pub font_size_white: f32,
     pub font_size_black: f32,
 }
@@ -210,15 +210,15 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
     }
 }
 
-pub fn draw_piano_keys(
-    d: &mut RaylibDrawHandle<'_>,
-    window_width: f32,
-    window_height: f32,
-    all_keys: &Vec<PianoKey>,
-    piano_props: &PianoProps,
-    key_texture: &Texture2D,
-    theme: &Theme,
-) {
+pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
+    let piano_props = &app_state.piano_state.piano_props;
+    let all_keys = &app_state.piano_state.all_keys;
+    let key_texture = &app_state.textures.piano_key_texture;
+    let font = &app_state.font;
+    let window_width = app_state.window_width;
+    let window_height = app_state.window_height;
+    let theme = &app_state.theme;
+
     let key_spacing = piano_props.key_spacing;
     let white_key_width = piano_props.white_key_width;
     let white_key_height = piano_props.white_key_height;
@@ -232,8 +232,6 @@ pub fn draw_piano_keys(
 
     let piano_x = (window_width - total_width) / 2.0;
     let piano_y = window_height - white_key_height;
-
-    let font = piano_props.font;
 
     // Draw a background for the piano
     d.draw_rectangle_rec(
@@ -249,7 +247,7 @@ pub fn draw_piano_keys(
         let y = piano_y - key.press_offset;
 
         d.draw_texture_pro(
-            key_texture,
+            &key_texture,
             Rectangle::new(
                 0.0,
                 0.0,
@@ -293,7 +291,7 @@ pub fn draw_piano_keys(
             let y = piano_y - 5.0 - key.press_offset;
 
             d.draw_texture_pro(
-                key_texture,
+                &key_texture,
                 Rectangle::new(
                     0.0,
                     0.0,
@@ -355,7 +353,7 @@ pub fn initialize_piano_dimensions<'a>(
     window_width: f32,
     all_keys: &Vec<PianoKey>,
     font: &'a Font,
-) -> PianoProps<'a> {
+) -> PianoProps {
     let num_white_keys = all_keys.iter().filter(|k| k.is_white).count() as f32;
 
     let black_key_width_ratio = 0.8;
@@ -369,8 +367,8 @@ pub fn initialize_piano_dimensions<'a>(
     let black_key_width = (white_key_width * black_key_width_ratio) - key_spacing;
     let black_key_height = white_key_height * black_key_height_ratio;
 
-    let font_size_white = calculate_font_size(white_key_width, font, 2);
-    let font_size_black = calculate_font_size(black_key_width, font, 3);
+    let font_size_white = calculate_font_size(white_key_width, &font, 2);
+    let font_size_black = calculate_font_size(black_key_width, &font, 3);
 
     PianoProps {
         key_spacing,
@@ -378,7 +376,6 @@ pub fn initialize_piano_dimensions<'a>(
         white_key_height,
         black_key_width,
         black_key_height,
-        font,
         font_size_white,
         font_size_black,
     }

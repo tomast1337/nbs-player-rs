@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use nbs_rs;
 use raylib::prelude::*;
 
-use crate::piano;
+use crate::app_state::AppState;
 
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
@@ -97,21 +97,20 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
     instrument_colors
 }
 
-pub fn draw_notes(
-    d: &mut RaylibDrawHandle<'_>,
-    window_width: f32,
-    window_height: f32,
-    all_keys: &Vec<piano::PianoKey>,
-    key_map: &HashMap<u8, usize>,
-    note_blocks: &Vec<Vec<NoteBlock>>,
-    piano_props: &piano::PianoProps,
-    note_texture: &Texture2D,
-    current_tick: f32,
-    note_dim: f32,
-    key_spacing: f32,
-    instrument_colors: &HashMap<u8, Color>,
-    font: &Font,
-) -> i32 {
+pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
+    let window_width = app_state.window_width;
+    let window_height = app_state.window_height;
+    let all_keys = &app_state.piano_state.all_keys;
+    let key_map = &app_state.piano_state.key_map;
+    let note_blocks = &app_state.note_state.note_blocks;
+    let piano_props = &app_state.piano_state.piano_props;
+    let note_texture = &app_state.textures.note_texture;
+    let current_tick = app_state.note_state.current_tick;
+    let note_dim = app_state.note_state.note_dim;
+    let key_spacing = app_state.note_state.key_spacing;
+    let instrument_colors = &app_state.note_state.instrument_colors;
+    let font = &app_state.font;
+
     let sliding_window_size = (window_height / note_dim) as i32 + 2;
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
     let window_end_tick = (current_tick as i32) + sliding_window_size;
