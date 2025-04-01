@@ -96,6 +96,21 @@ pub struct ControlsState {
 }
 
 impl ControlsState {
+    fn new(window_height: f32) -> Self {
+        const BTN_S: f32 = 40.; // Size of the buttons
+        let button_size = Vector2::new(BTN_S, BTN_S);
+        let control_panel_height = button_size.y * 2.0;
+        ControlsState {
+            controls_close_time: 0.5, // Time in seconds to wait before closing controls
+            sec_since_last_mouse_move: 0.0, // Timer for mouse inactivity
+            last_mouse_pos: Vector2::zero(), // Last recorded mouse position
+            button_size: button_size.clone(), // Size of buttons
+            control_panel_height,     // Height of the control panel
+            timeline_height: button_size.y, // Height of the timeline slider
+            toggle_fullscreen: false, // Fullscreen call state
+            controls_panel_y: window_height - control_panel_height, // Initial position of the controls panel (hidden)
+        }
+    }
     fn update_mouse_state(&mut self, current_mouse_pos: Vector2, delta_time: f32) {
         if current_mouse_pos.x != self.last_mouse_pos.x
             || current_mouse_pos.y != self.last_mouse_pos.y
@@ -219,17 +234,7 @@ impl<'a> AppState<'a> {
         log::debug!("Loaded note blocks");
         log::debug!("Loaded {} notes", song_state.note_blocks.len());
         /* --------------------------Controls State-------------------------- */
-        let button_size = Vector2::new(30.0, 30.0);
-        let controls_state = ControlsState {
-            controls_close_time: 0.5, // Time in seconds to wait before closing controls
-            sec_since_last_mouse_move: 0.0, // Timer for mouse inactivity
-            last_mouse_pos: rl.get_mouse_position(), // Last recorded mouse position
-            controls_panel_y: window_height, // Initial position of the controls panel (hidden)
-            button_size: button_size.clone(), // Size of volume buttons
-            control_panel_height: button_size.y * 2.0, // Height of the control panel
-            timeline_height: button_size.y, // Height of the timeline slider
-            toggle_fullscreen: false, // Fullscreen state
-        };
+        let controls_state = ControlsState::new(window_height);
 
         /* Gui style */
         AppState::set_gui_style(&mut rl, &theme);
