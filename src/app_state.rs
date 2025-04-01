@@ -342,21 +342,24 @@ impl<'a> AppState<'a> {
     }
 
     pub fn update_audio(&mut self, audio_engine: &mut audio::AudioEngine) {
-        // get current tick notes to play if not paused
-        if !self.song_state.is_paused
-            && self.song_state.elapsed_time < self.song_state.total_duration
-            && !self.song_state.played_ticks[(self.song_state.current_tick as f32).floor() as usize]
+        // Skip if paused, finished, or already played this tick
+        if self.song_state.is_paused
+            || self.song_state.elapsed_time >= self.song_state.total_duration
+            || self.song_state.played_ticks[self.song_state.current_tick as usize]
         {
-            // Play the notes for the current tick
-            if let Some(notes) = self
-                .song_state
-                .note_blocks
-                .get(self.song_state.current_tick as usize)
-            {
-                audio_engine.play_tick(notes);
-                self.song_state.played_ticks
-                    [(self.song_state.current_tick as f32).floor() as usize] = true;
-            }
+            return;
+        }
+
+        // Check if there are notes to play for the current tick
+        if let Some(notes) = self
+            .song_state
+            .note_blocks
+            .get(self.song_state.current_tick as usize)
+        {
+            audio_engine.play_tick(notes);
+
+            // Mark this tick as played
+            self.song_state.played_ticks[self.song_state.current_tick as usize] = true;
         }
     }
 
