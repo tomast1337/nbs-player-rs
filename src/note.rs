@@ -102,13 +102,13 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     let window_height = app_state.window_height;
     let all_keys = &app_state.piano_state.all_keys;
     let key_map = &app_state.piano_state.key_map;
-    let note_blocks = &app_state.note_state.note_blocks;
+    let note_blocks = &app_state.song_state.note_blocks;
     let piano_props = &app_state.piano_state.piano_props;
     let note_texture = &app_state.textures.note_texture;
-    let current_tick = app_state.note_state.current_tick;
-    let note_dim = app_state.note_state.note_dim;
-    let key_spacing = app_state.note_state.key_spacing;
-    let instrument_colors = &app_state.note_state.instrument_colors;
+    let current_tick = app_state.song_state.current_tick;
+    let note_dim = app_state.song_state.note_dim;
+    let key_spacing = app_state.song_state.key_spacing;
+    let instrument_colors = &app_state.song_state.instrument_colors;
     let font = &app_state.font;
 
     let sliding_window_size = (window_height / note_dim) as i32 + 2;

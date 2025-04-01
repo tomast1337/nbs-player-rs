@@ -36,7 +36,7 @@ impl PianoState {
         piano::update_key_animation(&mut self.all_keys, delta_time);
     }
 }
-pub struct NoteState {
+pub struct SongState<'a> {
     pub note_blocks: Vec<Vec<note::NoteBlock>>,
     pub current_tick: f32,
     pub elapsed_time: f32,
@@ -45,9 +45,7 @@ pub struct NoteState {
     pub played_ticks: Vec<bool>,
     pub instrument_colors: std::collections::HashMap<u8, Color>,
     pub is_paused: bool,
-}
 
-pub struct SongState<'a> {
     pub nbs_file: &'a NbsFile,
     //pub nbs_data: &'a song::SongData<'a>,
     pub extra_sounds: Vec<(&'a [u8], f64)>,
@@ -89,12 +87,12 @@ impl SongState<'_> {
 pub struct ControlsState {
     pub controls_close_time: f32, // Time in seconds to wait before closing controls
     pub sec_since_last_mouse_move: f32, // Timer for mouse inactivity
-    pub last_mouse_pos: Vector2,
-    pub controls_panel_y: f32, // Initial position of the controls panel (hidden)
-    pub button_size: Vector2,
-    pub control_panel_height: f32,
-    pub timeline_height: f32,
-    pub toggle_fullscreen: bool, // Fullscreen state
+    pub last_mouse_pos: Vector2,  // Last recorded mouse position
+    pub controls_panel_y: f32,    // Initial position of the controls panel (hidden)
+    pub button_size: Vector2,     // Size of volume buttons
+    pub control_panel_height: f32, // Height of the control panel
+    pub timeline_height: f32,     // Height of the timeline slider
+    pub toggle_fullscreen: bool,  // Fullscreen state
 }
 
 impl ControlsState {
@@ -134,7 +132,6 @@ pub struct AppState<'a> {
     pub volume: f32,
     pub song_state: SongState<'a>,
     pub piano_state: PianoState,
-    pub note_state: NoteState,
     pub controls_state: ControlsState,
 }
 
@@ -174,23 +171,11 @@ impl<'a> AppState<'a> {
         let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.0;
         let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
 
-        let song_state = SongState {
-            nbs_file,
-            //nbs_data,
-            extra_sounds: extra_sounds.to_vec(),
-            //song_name,
-            //song_author,
-            title,
-            notes_per_second,
-            total_duration,
-            is_end: false,
-        };
-
         /* ------------------------------Raylib------------------------------ */
 
         let (mut rl, thread) = raylib::init()
             .size(window_width as i32, window_height as i32)
-            .title(&song_state.title)
+            .title(&title)
             .build();
 
         let textures = textures::load_textures(&mut rl, &thread);
@@ -210,19 +195,29 @@ impl<'a> AppState<'a> {
         };
 
         /* ----------------------------Note State---------------------------- */
-        let note_state = NoteState {
-            note_blocks: note::get_note_blocks(&song_state.nbs_file),
+        let song_state = SongState {
+            nbs_file,
+            //nbs_data,
+            extra_sounds: extra_sounds.to_vec(),
+            //song_name,
+            //song_author,
+            title,
+            notes_per_second,
+            total_duration,
+            is_end: false,
+
+            note_blocks: note::get_note_blocks(&nbs_file),
             current_tick: 0.,
             elapsed_time: 0.,
             note_dim: piano_state.piano_props.white_key_width,
             key_spacing: piano_state.piano_props.key_spacing,
-            played_ticks: vec![false; song_state.nbs_file.header.song_length as usize],
+            played_ticks: vec![false; nbs_file.header.song_length as usize],
             instrument_colors: note::generate_instrument_palette(),
             is_paused: true,
         };
 
         log::debug!("Loaded note blocks");
-        log::debug!("Loaded {} notes", note_state.note_blocks.len());
+        log::debug!("Loaded {} notes", song_state.note_blocks.len());
         /* --------------------------Controls State-------------------------- */
         let button_size = Vector2::new(30.0, 30.0);
         let controls_state = ControlsState {
@@ -247,7 +242,6 @@ impl<'a> AppState<'a> {
             font,
             song_state,
             piano_state,
-            note_state,
             controls_state,
             font_size: 0.0,
             volume: 0.5,
@@ -354,8 +348,8 @@ impl<'a> AppState<'a> {
                 &self.piano_state.all_keys,
                 &self.font,
             );
-            self.note_state.note_dim = self.piano_state.piano_props.white_key_width;
-            self.note_state.key_spacing = self.piano_state.piano_props.key_spacing;
+            self.song_state.note_dim = self.piano_state.piano_props.white_key_width;
+            self.song_state.key_spacing = self.piano_state.piano_props.key_spacing;
         }
         if self.window_height != new_height {
             self.window_height = new_height;
@@ -375,21 +369,21 @@ impl<'a> AppState<'a> {
 
     pub fn update(&mut self, rl: &mut RaylibHandle, delta_time: f32) {
         if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
-            if self.note_state.elapsed_time >= self.song_state.total_duration {
-                self.note_state.elapsed_time = 0.;
-                self.note_state.played_ticks =
+            if self.song_state.elapsed_time >= self.song_state.total_duration {
+                self.song_state.elapsed_time = 0.;
+                self.song_state.played_ticks =
                     vec![false; self.song_state.nbs_file.header.song_length as usize];
-                self.note_state.note_blocks = note::get_note_blocks(&self.song_state.nbs_file);
-                self.note_state.is_paused = false;
+                self.song_state.note_blocks = note::get_note_blocks(&self.song_state.nbs_file);
+                self.song_state.is_paused = false;
             }
-            self.note_state.is_paused = !self.note_state.is_paused;
+            self.song_state.is_paused = !self.song_state.is_paused;
         }
 
         // Update elapsed time if not paused ad song is not finished
-        if !self.note_state.is_paused
-            && self.note_state.elapsed_time < self.song_state.total_duration
+        if !self.song_state.is_paused
+            && self.song_state.elapsed_time < self.song_state.total_duration
         {
-            self.note_state.elapsed_time += delta_time;
+            self.song_state.elapsed_time += delta_time;
         }
 
         // Check if the mouse has moved
@@ -397,17 +391,17 @@ impl<'a> AppState<'a> {
         self.controls_state
             .update_mouse_state(current_mouse_pos, delta_time);
 
-        self.note_state.current_tick =
-            self.note_state.elapsed_time * self.song_state.notes_per_second;
+        self.song_state.current_tick =
+            self.song_state.elapsed_time * self.song_state.notes_per_second;
 
         // Reset all key press states
         self.piano_state.reset_keys();
 
         // Trigger piano key presses for current and trigger audio
         if let Some(notes) = self
-            .note_state
+            .song_state
             .note_blocks
-            .get_mut(self.note_state.current_tick as usize)
+            .get_mut(self.song_state.current_tick as usize)
         {
             self.piano_state.trigger_key_press(notes);
         }
@@ -419,25 +413,25 @@ impl<'a> AppState<'a> {
         self.piano_state.update_key_animation(delta_time); // Update key animations
 
         // is end of song
-        self.song_state.is_end = self.note_state.elapsed_time >= self.song_state.total_duration;
+        self.song_state.is_end = self.song_state.elapsed_time >= self.song_state.total_duration;
     }
 
     pub fn update_audio(&mut self, audio_engine: &mut audio::AudioEngine) {
         // get current tick notes to play if not paused
-        if !self.note_state.is_paused
-            && self.note_state.elapsed_time < self.song_state.total_duration
-            && !self.note_state.played_ticks[(self.note_state.current_tick as f32).floor() as usize]
+        if !self.song_state.is_paused
+            && self.song_state.elapsed_time < self.song_state.total_duration
+            && !self.song_state.played_ticks[(self.song_state.current_tick as f32).floor() as usize]
         {
             // Play the notes for the current tick
             if let Some(notes) = self
-                .note_state
+                .song_state
                 .note_blocks
-                .get(self.note_state.current_tick as usize)
+                .get(self.song_state.current_tick as usize)
             {
                 audio_engine.play_tick(notes);
                 //sound.play();
-                self.note_state.played_ticks
-                    [(self.note_state.current_tick as f32).floor() as usize] = true;
+                self.song_state.played_ticks
+                    [(self.song_state.current_tick as f32).floor() as usize] = true;
             }
         }
     }
@@ -506,7 +500,7 @@ impl<'a> AppState<'a> {
         let button_size = self.controls_state.button_size;
         let timeline_height = self.controls_state.timeline_height;
         let total_duration = self.song_state.total_duration;
-        let elapsed_time = self.note_state.elapsed_time;
+        let elapsed_time = self.song_state.elapsed_time;
         let last_mouse_pos = self.controls_state.last_mouse_pos;
         let control_panel_rect =
             Rectangle::new(0.0, controls_panel_y, window_width, control_panel_height);
@@ -565,14 +559,14 @@ impl<'a> AppState<'a> {
             self.controls_state.sec_since_last_mouse_move = 0.0;
         }
         /*----------------------------- Draw Gui -----------------------------*/
-        let is_paused = self.note_state.is_paused;
+        let is_paused = self.song_state.is_paused;
         let textures = &self.textures;
         let theme = &self.theme;
         let nbs_file = &self.song_state.nbs_file;
         let notes_per_second = self.song_state.notes_per_second;
         let font = &self.font;
         let font_size = self.font_size;
-        let current_tick = self.note_state.current_tick;
+        let current_tick = self.song_state.current_tick;
         unsafe {
             d.draw_rectangle_rec(control_panel_rect, Color::BLACK.alpha(0.7));
 
@@ -717,7 +711,7 @@ impl<'a> AppState<'a> {
                 );
 
                 if is_button_clicked == 1 {
-                    self.note_state.is_paused = false;
+                    self.song_state.is_paused = false;
                 }
             }
 
@@ -736,26 +730,26 @@ impl<'a> AppState<'a> {
             );
 
             if is_play_pause_click == 1 {
-                self.note_state.is_paused = !self.note_state.is_paused;
+                self.song_state.is_paused = !self.song_state.is_paused;
             }
 
             if is_reset_click == 1 {
-                self.note_state.elapsed_time = 0.;
-                self.note_state.played_ticks = vec![false; nbs_file.header.song_length as usize];
-                self.note_state.is_paused = true;
+                self.song_state.elapsed_time = 0.;
+                self.song_state.played_ticks = vec![false; nbs_file.header.song_length as usize];
+                self.song_state.is_paused = true;
             }
 
             if is_timeline_slider_adjusted == 1 {
                 // set all played ticks to false beyond the current tick and all ticks before as played
-                self.note_state.current_tick = new_tick;
+                self.song_state.current_tick = new_tick;
                 for i in 0..nbs_file.header.song_length as usize {
                     if i < current_tick as usize {
-                        self.note_state.played_ticks[i] = true;
+                        self.song_state.played_ticks[i] = true;
                     } else {
-                        self.note_state.played_ticks[i] = false;
+                        self.song_state.played_ticks[i] = false;
                     }
                 }
-                self.note_state.elapsed_time = new_tick / notes_per_second;
+                self.song_state.elapsed_time = new_tick / notes_per_second;
             }
 
             if is_volume_adjusted == 1 {
