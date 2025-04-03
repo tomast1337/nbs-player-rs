@@ -3,18 +3,23 @@ use std::collections::HashMap;
 use nbs_rs;
 use raylib::prelude::*;
 
-use crate::app_state::AppState;
+use crate::{app_state::AppState, audio::AudioClip, utils};
 
 #[derive(Clone, Debug)]
 pub struct NoteBlock {
-    pub instrument: u8,
+    pub instrument: u32,
     pub key: u8,
-    pub velocity: u8,
-    pub panning: i8,
-    pub pitch: i16,
+    //pub tone: f32,
+    pub frequency_ratio: f32,
+    pub volume: f32,
+    pub pan: f32,
 }
 
-pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
+pub fn get_note_blocks(
+    song: &nbs_rs::NbsFile,
+    sounds: &HashMap<u32, AudioClip>,
+) -> Vec<Vec<NoteBlock>> {
+    const INV_12: f32 = 1.0 / 12.0;
     // Pre allocate the ticks so it doesn't have to resize the on each iteration
     let mut note_blocks: Vec<Vec<NoteBlock>> = vec![Vec::new(); song.header.song_length as usize];
 
@@ -22,24 +27,32 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
         let tick = note.tick as usize;
         if tick < note_blocks.len() {
             // get note layer
-            if note.layer as usize >= song.layers.len() {
-                note_blocks[tick].push(NoteBlock {
-                    instrument: note.instrument,
-                    key: note.key,
-                    velocity: note.velocity,
-                    panning: note.panning,
-                    pitch: note.pitch,
-                });
-            } else {
-                //let layer = &song.layers[note.layer as usize];
-                note_blocks[tick].push(NoteBlock {
-                    instrument: note.instrument,
-                    key: note.key,
-                    velocity: note.velocity,
-                    panning: note.panning,
-                    pitch: note.pitch,
-                });
-            }
+            let sound_id = note.instrument as u32;
+            let key = note.key as f32;
+            let velocity = note.velocity as f32;
+            let panning = note.panning as f32;
+            let pitch = note.pitch as f32;
+
+            let sound_data = match sounds.get(&sound_id) {
+                Some(data) => data,
+                None => continue,
+            };
+
+            // Calculate sound properties
+            let tone = sound_data.pitch as f32;
+            let frequency_ratio = utils::fast_pow2((key + (pitch / 100.0) - tone) * INV_12);
+            let volume = velocity / 100.0;
+            let pan = ((panning + 100.0) / 200.0) - 0.5;
+
+            //let layer = &song.layers[note.layer as usize];
+            note_blocks[tick].push(NoteBlock {
+                instrument: note.instrument as u32,
+                key: note.key,
+                //tone,
+                frequency_ratio,
+                volume,
+                pan,
+            });
         }
     }
 
@@ -52,8 +65,8 @@ pub fn get_note_blocks(song: &nbs_rs::NbsFile) -> Vec<Vec<NoteBlock>> {
     note_blocks
 }
 
-pub fn generate_instrument_palette() -> HashMap<u8, Color> {
-    let mut instrument_colors = HashMap::new();
+pub fn generate_instrument_palette() -> HashMap<u32, Color> {
+    let mut instrument_colors: HashMap<u32, Color> = HashMap::new();
 
     let instrument_color_palette = vec![
         (0, "#1964ac"),
@@ -91,7 +104,7 @@ pub fn generate_instrument_palette() -> HashMap<u8, Color> {
         let value = 1.0;
 
         let color = Color::color_from_hsv(hue, saturation, value);
-        instrument_colors.insert((i + initial_palette_size) as u8, color);
+        instrument_colors.insert((i + initial_palette_size) as u32, color);
     }
 
     instrument_colors
@@ -157,8 +170,7 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
                         .clone();
 
                         // convet note.velocity  0-100 to 0-255
-                        color =
-                            color.alpha(((note.velocity as f32 / 100.0) * 255.0).round() as f32);
+                        color = color.alpha(((note.volume as f32 / 100.0) * 255.0).round() as f32);
 
                         // Draw the note texture
                         d.draw_texture_pro(

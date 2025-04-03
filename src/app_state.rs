@@ -1,8 +1,11 @@
 extern crate raylib;
+use std::collections::HashMap;
+
 use nbs_rs::NbsFile;
 use raylib::prelude::*;
 
 use crate::audio;
+use crate::audio::AudioClip;
 use crate::config;
 use crate::font;
 use crate::note;
@@ -54,7 +57,7 @@ pub struct SongState<'a> {
     pub font_size_2: f32,                       // Font size for the note blocks with flat notes
     pub key_spacing: f32,                       // Spacing between keys
     pub played_ticks: Vec<bool>,                // Vector to track played ticks
-    pub instrument_colors: std::collections::HashMap<u8, Color>, // Map of instrument colors
+    pub instrument_colors: std::collections::HashMap<u32, Color>, // Map of instrument colors
     pub is_paused: bool,                        // Flag to check if the song is paused
     pub nbs_file: &'a NbsFile,                  // Reference to the NBS file
     pub extra_sounds: Vec<(&'a [u8], f64)>,     // Extra sounds to be played
@@ -214,7 +217,7 @@ impl<'a> AppState<'a> {
         let note_dim = piano_state.piano_props.white_key_width;
         let (font_size_3, font_size_2) = note::calculate_note_block_font_sizes(note_dim, &font);
         let song_state = SongState {
-            note_blocks: note::get_note_blocks(&nbs_file),
+            note_blocks: Vec::new(),
             current_tick: 0.,
             elapsed_time: 0.,
             note_dim,
@@ -292,13 +295,19 @@ impl<'a> AppState<'a> {
         }
     }
 
-    pub fn update(&mut self, rl: &mut RaylibHandle, delta_time: f32) {
+    pub fn update(
+        &mut self,
+        rl: &mut RaylibHandle,
+        delta_time: f32,
+        sounds: &HashMap<u32, AudioClip>,
+    ) {
         if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
             if self.song_state.elapsed_time >= self.song_state.total_duration {
                 self.song_state.elapsed_time = 0.;
                 self.song_state.played_ticks =
                     vec![false; self.song_state.nbs_file.header.song_length as usize];
-                self.song_state.note_blocks = note::get_note_blocks(&self.song_state.nbs_file);
+                self.song_state.note_blocks =
+                    note::get_note_blocks(&self.song_state.nbs_file, &sounds);
                 self.song_state.is_paused = false;
             }
             self.song_state.is_paused = !self.song_state.is_paused;

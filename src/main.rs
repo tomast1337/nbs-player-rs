@@ -64,12 +64,14 @@ fn main() {
 
     app_state.window_width = rl.get_screen_width() as f32;
     app_state.window_height = rl.get_screen_height() as f32;
+    app_state.song_state.note_blocks =
+        note::get_note_blocks(&app_state.song_state.nbs_file, &audio_engine.sounds);
 
     while !rl.window_should_close() {
         app_state.toggle_fullscreen(&mut rl);
         app_state.update_window_dimensions(&mut rl);
         let delta_time = rl.get_frame_time();
-        app_state.update(&mut rl, delta_time);
+        app_state.update(&mut rl, delta_time, &audio_engine.sounds);
         app_state.update_audio(&mut audio_engine);
         let mut d = rl.begin_drawing(&thread);
         app_state.draw(&mut d);

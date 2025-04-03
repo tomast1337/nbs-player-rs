@@ -61,6 +61,28 @@ pub fn string_to_c_char(s: String) -> *const std::ffi::c_char {
     ptr as *const std::ffi::c_char
 }
 
+pub fn fast_pow2(x: f32) -> f32 {
+    let x0 = x.floor();
+    let x1 = x - x0;
+
+    // Handle overflow and underflow
+    if x0 >= 32.0 {
+        return f32::INFINITY; // 2^x is too large for f32
+    } else if x0 <= -32.0 {
+        return 0.0; // 2^x is too small for f32
+    }
+
+    // Calculate 2^x1 using a polynomial approximation
+    let p = 1.0 + x1 * (0.693147 + x1 * (0.241586 + x1 * 0.052043));
+
+    // Calculate 2^x0 using bit shifting (only for positive x0)
+    if x0 >= 0.0 {
+        p * (1 << x0 as i32) as f32
+    } else {
+        p / (1 << (-x0 as i32)) as f32
+    }
+}
+
 /*
 pub fn logger_callback(level: raylib::ffi::TraceLogLevel, text: &str) {
     match level {
