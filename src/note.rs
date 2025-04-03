@@ -21,7 +21,17 @@ pub fn get_note_blocks(
 ) -> Vec<Vec<NoteBlock>> {
     const INV_12: f32 = 1.0 / 12.0;
     // Pre allocate the ticks so it doesn't have to resize the on each iteration
-    let mut note_blocks: Vec<Vec<NoteBlock>> = vec![Vec::new(); song.header.song_length as usize];
+    let song_length = song.header.song_length as usize;
+    let total_notes = song.notes.len();
+    let average_notes_per_tick = if song_length > 0 {
+        (total_notes / song_length).max(1) // Ensure at least 1 note per tick
+    } else {
+        1
+    };
+
+    let mut note_blocks: Vec<Vec<NoteBlock>> = (0..song_length)
+        .map(|_| Vec::with_capacity(average_notes_per_tick))
+        .collect();
 
     for note in &song.notes {
         let tick = note.tick as usize;

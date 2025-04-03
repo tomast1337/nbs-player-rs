@@ -47,11 +47,11 @@ impl<'a> AudioEngine<'a> {
         }
 
         let pool_size = if cfg!(target_arch = "wasm32") {
-            48 // Smaller pool for WASM
+            32 // Smaller pool for WASM
         } else {
             128 // Larger pool for other platforms
         };
-        log::debug!("Pool size: {}", pool_size);
+        log::debug!("Audio pool size: {}", pool_size);
 
         let mut audio_engine = Self {
             sounds: HashMap::new(),
