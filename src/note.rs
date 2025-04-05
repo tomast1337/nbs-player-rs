@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{cell::RefCell, collections::HashMap};
 
 use nbs_rs;
 use raylib::prelude::*;
@@ -76,45 +76,47 @@ pub fn get_note_blocks(
 }
 
 pub fn generate_instrument_palette() -> HashMap<u32, Color> {
-    let mut instrument_colors: HashMap<u32, Color> = HashMap::new();
+    // Pre-allocate the HashMap with the expected capacity (16 base colors + 100 generated)
+    let mut instrument_colors = HashMap::with_capacity(116);
 
-    let instrument_color_palette = vec![
-        (0, "#1964ac"),
-        (1, "#3c8e48"),
-        (2, "#be6b6b"),
-        (3, "#bebe19"),
-        (4, "#9d5a98"),
-        (5, "#572b21"),
-        (6, "#bec65c"),
-        (7, "#be19be"),
-        (8, "#52908d"),
-        (9, "#bebebe"),
-        (10, "#1991be"),
-        (11, "#be2328"),
-        (12, "#be5728"),
-        (13, "#19be19"),
-        (14, "#be1957"),
-        (15, "#575757"),
+    // Static array instead of Vec for compile-time optimization
+    const INSTRUMENT_COLOR_PALETTE: [(u32, &str); 16] = [
+        (0, "1964ac"),
+        (1, "3c8e48"),
+        (2, "be6b6b"),
+        (3, "bebe19"),
+        (4, "9d5a98"),
+        (5, "572b21"),
+        (6, "bec65c"),
+        (7, "be19be"),
+        (8, "52908d"),
+        (9, "bebebe"),
+        (10, "1991be"),
+        (11, "be2328"),
+        (12, "be5728"),
+        (13, "19be19"),
+        (14, "be1957"),
+        (15, "575757"),
     ];
 
-    for (id, color) in instrument_color_palette.iter() {
-        // remove the # from the color string
-        let color_str = &color[1..];
+    // Precompute alpha to avoid repeated casting
+    const ALPHA: u8 = (255.0 * 0.90) as u8;
+
+    // Process the base colors
+    for &(id, color_str) in &INSTRUMENT_COLOR_PALETTE {
         let mut color = Color::from_hex(color_str).unwrap();
-        color.a = (255. * 0.90) as u8; // Set alpha to 0.90
-        instrument_colors.insert(*id, color);
+        color.a = ALPHA;
+        instrument_colors.insert(id, color);
     }
 
-    let initial_palette_size = instrument_colors.len();
+    // Precompute the hue step to avoid division in the loop
+    const HUE_STEP: f32 = 3.6; // 360° / 100 colors
 
-    // add 100 more colors to the palette following hue wheel
+    // Generate additional colors (100 more)
     for i in 0..100 {
-        let hue = i as f32 * 3.6; // Spread colors evenly on the hue wheel
-        let saturation = 1.0;
-        let value = 1.0;
-
-        let color = Color::color_from_hsv(hue, saturation, value);
-        instrument_colors.insert((i + initial_palette_size) as u32, color);
+        let hue = i as f32 * HUE_STEP;
+        let color = Color::color_from_hsv(hue, 1.0, 1.0);
+        instrument_colors.insert((i + 16) as u32, color);
     }
 
     instrument_colors
@@ -236,30 +238,62 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     }
     notes_rendered
 }
+
 fn calculate_font_size(note_dim: f32, font: &Font, label_size: usize) -> f32 {
-    let max_font_size = 30.;
-    let mut font_size = max_font_size;
-    // Maximum font size
-    let min_font_size = 8.;
-    // Minimum font size
+    const MAX_FONT_SIZE: f32 = 30.0;
+    const MIN_FONT_SIZE: f32 = 8.0;
+    const PADDING: f32 = 5.0;
 
-    // generate a string with the same length as the note label
-    let label = "#".repeat(label_size);
-
-    // Measure text width and height
-    let mut text_width = font.measure_text(&label, font_size, 0.).x;
-
-    // Adjust font size if the text is too large
-    while (text_width > note_dim - 5.) && font_size > min_font_size {
-        font_size -= 1.;
-        text_width = font.measure_text(&label, font_size, 0.).x;
+    if label_size == 0 {
+        return MIN_FONT_SIZE;
     }
-    font_size
+
+    // Use a single allocation for all test strings
+    static TEST_STRINGS: once_cell::sync::Lazy<Vec<String>> =
+        once_cell::sync::Lazy::new(|| (0..=4).map(|i| "#".repeat(i)).collect());
+
+    let test_string = &TEST_STRINGS.get(label_size).unwrap_or(&TEST_STRINGS[4]);
+
+    // Binary search with early exit for perfect fits
+    let mut low = MIN_FONT_SIZE;
+    let mut high = MAX_FONT_SIZE;
+    let mut best_size = MIN_FONT_SIZE;
+
+    while (high - low) > 0.1 {
+        // Precision threshold
+        let mid = (low + high) / 2.0;
+        let text_width = font.measure_text(test_string, mid, 0.0).x;
+
+        if text_width <= note_dim - PADDING {
+            best_size = mid;
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+
+    best_size
+}
+
+thread_local! {
+    static FONT_SIZE_CACHE: RefCell<HashMap< u32, (f32, f32)>> = RefCell::new(HashMap::new());
 }
 
 pub fn calculate_note_block_font_sizes(note_dim: f32, font: &Font) -> (f32, f32) {
-    // Calculate font size to fit within the note block
-    let font_size_3 = calculate_font_size(note_dim, font, 3);
-    let font_size_2 = calculate_font_size(note_dim, font, 4);
-    (font_size_3, font_size_2)
+    // Create a hash key from the note dimension and font properties
+    let cache_key = note_dim.to_bits();
+
+    FONT_SIZE_CACHE.with(|cache| {
+        if let Some(sizes) = cache.borrow().get(&cache_key) {
+            return *sizes;
+        }
+
+        // Calculate fresh values
+        let font_size_3 = calculate_font_size(note_dim, font, 3);
+        let font_size_4 = calculate_font_size(note_dim, font, 4);
+        let result = (font_size_3, font_size_4);
+
+        cache.borrow_mut().insert(cache_key, result);
+        result
+    })
 }
