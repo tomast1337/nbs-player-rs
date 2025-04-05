@@ -1,8 +1,7 @@
 extern crate raylib;
-use std::collections::HashMap;
-
 use nbs_rs::NbsFile;
 use raylib::prelude::*;
+use std::collections::HashMap;
 
 use crate::audio;
 use crate::audio::AudioClip;
@@ -10,50 +9,12 @@ use crate::config;
 use crate::font;
 use crate::note;
 use crate::piano;
+use crate::piano::PianoState;
 use crate::song;
 use crate::textures;
 use crate::theme;
 use crate::utils;
 
-#[derive(Debug, Clone)]
-pub struct PianoState {
-    pub all_keys: Vec<piano::PianoKey>,
-    pub key_map: std::collections::HashMap<u8, usize>,
-    pub piano_props: piano::PianoProps,
-}
-impl PianoState {
-    fn new(window_width: f32, font: &Font) -> Self {
-        let (all_keys, key_map) = piano::generate_piano_keys();
-        let piano_props = piano::initialize_piano_dimensions(window_width, &all_keys, font);
-        PianoState {
-            all_keys,
-            key_map,
-            piano_props,
-        }
-    }
-    fn reset_keys(&mut self) {
-        for key in &mut self.all_keys {
-            key.is_pressed = false;
-        }
-    }
-    fn trigger_key_press(
-        &mut self,
-        note_blocks: &mut Vec<note::NoteBlock>,
-        note_color_map: &HashMap<u32, Color>,
-    ) {
-        for note in note_blocks {
-            let instrument = note.instrument;
-            if let Some(&key_index) = self.key_map.get(&note.key) {
-                let color = note_color_map.get(&(instrument)).unwrap_or(&Color::WHITE);
-                let tint = (color, note.volume / 5.);
-                self.all_keys[key_index].press(Some(tint));
-            }
-        }
-    }
-    fn update_key_animation(&mut self, delta_time: f32) {
-        piano::update_key_animation(&mut self.all_keys, delta_time);
-    }
-}
 #[derive(Debug, Clone)]
 pub struct SongState<'a> {
     pub note_blocks: Vec<Vec<note::NoteBlock>>, // Note blocks for each tick
