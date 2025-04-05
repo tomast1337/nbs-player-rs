@@ -93,7 +93,7 @@ pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThrea
     let vol_075 = load_from_mem(
         rl,
         thread,
-        include_bytes!("../assets/textures/vol100.png"),
+        include_bytes!("../assets/textures/vol075.png"),
         ".png",
     );
 
