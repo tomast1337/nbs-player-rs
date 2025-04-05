@@ -112,18 +112,3 @@ pub fn blend_colors(base: Color, tints: &[(Color, f32)]) -> Color {
         a.round() as u8,
     )
 }
-
-/*
-pub fn logger_callback(level: raylib::ffi::TraceLogLevel, text: &str) {
-    match level {
-        TraceLogLevel::LOG_ALL => log::trace!("{}", text),
-        TraceLogLevel::LOG_TRACE => log::trace!("{}", text),
-        TraceLogLevel::LOG_DEBUG => log::debug!("{}", text),
-        TraceLogLevel::LOG_INFO => log::info!("{}", text),
-        TraceLogLevel::LOG_WARNING => log::warn!("{}", text),
-        TraceLogLevel::LOG_ERROR => log::error!("{}", text),
-        TraceLogLevel::LOG_FATAL => log::error!("{}", text),
-        TraceLogLevel::LOG_NONE => {}
-    }
-}
-*/
