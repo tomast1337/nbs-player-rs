@@ -1,8 +1,8 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::OnceLock};
 
 use raylib::prelude::*;
 
-use crate::{app_state::AppState, utils};
+use crate::{app_state::AppState, note, utils};
 #[derive(Debug, Clone)]
 pub struct PianoProps {
     pub key_spacing: f32,
@@ -337,5 +337,66 @@ pub fn initialize_piano_dimensions<'a>(
         black_key_height,
         font_size_white,
         font_size_black,
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct PianoState {
+    pub all_keys: Vec<PianoKey>,
+    pub key_map: HashMap<u8, usize>,
+    pub piano_props: PianoProps,
+}
+
+// Cache for piano keys (generated once per application)
+static PIANO_KEYS_CACHE: OnceLock<(Vec<PianoKey>, HashMap<u8, usize>)> = OnceLock::new();
+
+impl PianoState {
+    pub fn new(window_width: f32, font: &Font) -> Self {
+        // Get or initialize cached piano keys
+        let (all_keys, key_map) = PIANO_KEYS_CACHE
+            .get_or_init(|| generate_piano_keys())
+            .clone(); // Clone the cached data
+
+        let piano_props = initialize_piano_dimensions(window_width, &all_keys, font);
+
+        PianoState {
+            all_keys,
+            key_map,
+            piano_props,
+        }
+    }
+
+    pub fn reset_keys(&mut self) {
+        // Use iter_mut for direct mutable access
+        self.all_keys.iter_mut().for_each(|key| {
+            key.is_pressed = false;
+        });
+    }
+
+    pub fn trigger_key_press(
+        &mut self,
+        note_blocks: &mut Vec<note::NoteBlock>,
+        note_color_map: &HashMap<u32, Color>,
+    ) {
+        // Pre-compute division for volume
+        const VOLUME_DIVISOR: f32 = 5.0;
+
+        note_blocks.iter().for_each(|note| {
+            if let Some(&key_index) = self.key_map.get(&note.key) {
+                let color = note_color_map
+                    .get(&note.instrument)
+                    .unwrap_or(&Color::WHITE);
+
+                self.all_keys[key_index].press(Some((
+                    color, // Dereference color once
+                    note.volume / VOLUME_DIVISOR,
+                )));
+            }
+        });
+    }
+
+    pub fn update_key_animation(&mut self, delta_time: f32) {
+        // Pass the slice directly for better cache locality
+        update_key_animation(self.all_keys.as_mut_slice(), delta_time);
     }
 }
