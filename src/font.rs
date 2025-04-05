@@ -11,6 +11,7 @@ impl From<String> for FontError {
     }
 }
 
+#[inline]
 fn load_from_bytes(
     rl: &mut RaylibHandle,
     thread: &RaylibThread,
