@@ -126,41 +126,50 @@ const MIN_OFFSET: f32 = -10.0; // Minimum offset
 const STOP_THRESHOLD: f32 = 0.1; // Threshold to stop animation
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    // Precompute constants
+    // Precompute all delta constants once
     let damping_delta = DAMPING * delta_time;
     let press_force_delta = PRESS_FORCE * delta_time;
     let spring_constant_delta = SPRING_CONSTANT * delta_time;
 
+    // Process keys in cache-friendly linear order
     for key in keys.iter_mut() {
-        let force = if key.is_pressed {
-            -press_force_delta - damping_delta * (key.press_velocity + 1000.0)
+        // Load all fields into local variables first
+        let is_pressed = key.is_pressed;
+        let mut offset = key.press_offset;
+        let mut velocity = key.press_velocity;
+
+        // Calculate force
+        let force = if is_pressed {
+            -press_force_delta - damping_delta * (velocity + 1000.0)
         } else {
-            -key.press_offset * spring_constant_delta - damping_delta * key.press_velocity
+            -offset * spring_constant_delta - damping_delta * velocity
         };
 
-        // Update velocity and offset
-        key.press_velocity += force;
-        key.press_offset += key.press_velocity * delta_time;
+        // Update physics
+        velocity += force;
+        offset += velocity * delta_time;
 
-        // Clamp offset and handle stopping condition
-        if key.is_pressed {
-            if key.press_offset < MIN_OFFSET {
-                key.press_offset = MIN_OFFSET;
-                key.press_velocity = 0.0;
+        // Apply constraints
+        if is_pressed {
+            if offset < MIN_OFFSET {
+                offset = MIN_OFFSET;
+                velocity = 0.0;
             }
         } else {
-            if key.press_offset.abs() < STOP_THRESHOLD && key.press_velocity.abs() < STOP_THRESHOLD
-            {
-                key.press_offset = 0.0;
-                key.press_velocity = 0.0;
-            } else if key.press_offset > MAX_OFFSET {
-                key.press_offset = MAX_OFFSET;
-                key.press_velocity = 0.0;
+            if offset.abs() < STOP_THRESHOLD && velocity.abs() < STOP_THRESHOLD {
+                offset = 0.0;
+                velocity = 0.0;
+            } else if offset > MAX_OFFSET {
+                offset = MAX_OFFSET;
+                velocity = 0.0;
             }
         }
+
+        // Store back results
+        key.press_offset = offset;
+        key.press_velocity = velocity;
     }
 }
-
 pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
     let piano_props = &app_state.piano_state.piano_props;
     let all_keys = &app_state.piano_state.all_keys;
@@ -412,22 +421,19 @@ impl PianoState {
 
     pub fn trigger_key_press(
         &mut self,
-        note_blocks: &mut Vec<note::NoteBlock>,
+        note_blocks: &[note::NoteBlock],
         note_color_map: &HashMap<u32, Color>,
     ) {
-        // Pre-compute division for volume
         const VOLUME_DIVISOR: f32 = 5.0;
 
         note_blocks.iter().for_each(|note| {
             if let Some(&key_index) = self.key_map.get(&note.key) {
-                let color = note_color_map
+                // Dereference color immediately to avoid holding reference
+                let color = *note_color_map
                     .get(&note.instrument)
                     .unwrap_or(&Color::WHITE);
 
-                self.all_keys[key_index].press(Some((
-                    color, // Dereference color once
-                    note.volume / VOLUME_DIVISOR,
-                )));
+                self.all_keys[key_index].press(Some((&color, note.volume / VOLUME_DIVISOR)));
             }
         });
     }
