@@ -14,7 +14,7 @@ pub struct Textures {
     pub vol_075: Texture2D,
     pub vol_100: Texture2D,
 }
-
+#[inline]
 fn load_from_mem(
     rl: &mut raylib::RaylibHandle,
     thread: &raylib::RaylibThread,
