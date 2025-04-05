@@ -1,5 +1,9 @@
-use std::{collections::HashMap, sync::OnceLock};
+use std::{
+    collections::HashMap,
+    sync::{Mutex, OnceLock},
+};
 
+use once_cell::sync::Lazy;
 use raylib::prelude::*;
 
 use crate::{app_state::AppState, note, utils};
@@ -288,24 +292,57 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
 }
 
 fn calculate_font_size(key_width: f32, font: &Font, label_size: usize) -> f32 {
-    let max_font_size = 30.;
-    let mut font_size = max_font_size;
-    // Maximum font size
-    let min_font_size = 8.;
-    // Minimum font size
+    // Constants
+    const MAX_FONT_SIZE: f32 = 30.0;
+    const MIN_FONT_SIZE: f32 = 8.0;
+    const PADDING: f32 = 5.0;
+    const PRECISION: f32 = 0.1;
 
-    // generate a string with the same length as the note label
-    let label = "#".repeat(label_size);
-
-    // Measure text width and height
-    let mut text_width = font.measure_text(&label, font_size, 0.).x;
-
-    // Adjust font size if the text is too large
-    while (text_width > key_width - 5.) && font_size > min_font_size {
-        font_size -= 1.;
-        text_width = font.measure_text(&label, font_size, 0.).x;
+    // Early exit for edge cases
+    if label_size == 0 || key_width <= PADDING {
+        return MIN_FONT_SIZE;
     }
-    font_size
+
+    // Static cache for common label strings (1-4)
+    static COMMON_LABELS: [&str; 4] = ["#", "##", "###", "####"];
+
+    // Global cache for uncommon label sizes
+    static STRING_CACHE: Lazy<Mutex<HashMap<usize, &'static str>>> =
+        Lazy::new(|| Mutex::new(HashMap::new()));
+
+    // Get cached string or create new one
+    let label = if label_size <= 4 {
+        COMMON_LABELS[label_size - 1]
+    } else {
+        *STRING_CACHE
+            .lock()
+            .unwrap()
+            .entry(label_size)
+            .or_insert_with(|| {
+                let s = "#".repeat(label_size);
+                Box::leak(s.into_boxed_str())
+            })
+    };
+
+    // Binary search for optimal font size
+    let mut low = MIN_FONT_SIZE;
+    let mut high = MAX_FONT_SIZE;
+    let mut best_size = MIN_FONT_SIZE;
+    let max_width = key_width - PADDING;
+
+    while (high - low) > PRECISION {
+        let mid = (low + high) / 2.0;
+        let text_width = font.measure_text(label, mid, 0.0).x;
+
+        if text_width <= max_width {
+            best_size = mid;
+            low = mid;
+        } else {
+            high = mid;
+        }
+    }
+
+    best_size
 }
 
 pub fn initialize_piano_dimensions<'a>(
