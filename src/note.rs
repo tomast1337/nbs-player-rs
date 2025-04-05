@@ -115,7 +115,8 @@ pub fn generate_instrument_palette() -> HashMap<u32, Color> {
     // Generate additional colors (100 more)
     for i in 0..100 {
         let hue = i as f32 * HUE_STEP;
-        let color = Color::color_from_hsv(hue, 1.0, 1.0);
+        let mut color = Color::color_from_hsv(hue, 1.0, 1.0);
+        color.a = ALPHA;
         instrument_colors.insert((i + 16) as u32, color);
     }
 
