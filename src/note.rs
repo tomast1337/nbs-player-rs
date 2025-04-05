@@ -15,6 +15,7 @@ pub struct NoteBlock {
     pub pan: f32,
 }
 
+/// Converts a NBS file into a vector of note blocks
 pub fn get_note_blocks(
     song: &nbs_rs::NbsFile,
     sounds: &HashMap<u32, AudioClip>,
@@ -75,6 +76,9 @@ pub fn get_note_blocks(
     note_blocks
 }
 
+/// Generates a color palette for instruments
+/// Returns a HashMap with instrument IDs as keys and Color as values
+/// The first 16 colors are predefined, and the rest are generated using HSV color space
 pub fn generate_instrument_palette() -> HashMap<u32, Color> {
     // Pre-allocate the HashMap with the expected capacity (16 base colors + 100 generated)
     let mut instrument_colors = HashMap::with_capacity(116);
@@ -123,7 +127,10 @@ pub fn generate_instrument_palette() -> HashMap<u32, Color> {
     instrument_colors
 }
 
+/// Draws the notes on the screen
+/// Returns the number of notes rendered
 pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
+    // Extract all needed values from app_state first
     let window_width = app_state.window_width;
     let window_height = app_state.window_height;
     let all_keys = &app_state.piano_state.all_keys;
@@ -136,15 +143,21 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     let key_spacing = app_state.song_state.key_spacing;
     let instrument_colors = &app_state.song_state.instrument_colors;
     let font = &app_state.font;
+    let font_size_2 = app_state.song_state.font_size_2;
+    let font_size_3 = app_state.song_state.font_size_3;
 
+    // Precompute values that don't change during the loop
     let sliding_window_size = (window_height / note_dim) as i32 + 2;
     let window_start_tick = (current_tick - sliding_window_size as f32).max(0.0) as i32;
-    let window_end_tick = (current_tick as i32) + sliding_window_size;
+    let window_end_tick = current_tick as i32 + sliding_window_size;
 
-    let base_offset = -window_width / 2. + note_dim / 2.;
-    let min_y = 0.;
+    let half_window_width = window_width / 2.0;
+    let half_note_dim = note_dim / 2.0;
+    let base_offset = -half_window_width + half_note_dim;
+    let min_y = 0.0;
     let max_y = window_height - piano_props.white_key_height;
 
+    // Precompute texture source rectangle (doesn't change)
     let note_source_rec = Rectangle::new(
         0.0,
         0.0,
@@ -157,7 +170,7 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
 
     for tick in window_start_tick as usize..window_end_tick as usize {
         let tick_f32 = tick as f32;
-        if let Some(notes) = note_blocks.get(tick as usize) {
+        if let Some(notes) = note_blocks.get(tick) {
             for note in notes {
                 if let Some(&key_index) = key_map.get(&note.key) {
                     let piano_key = &all_keys[key_index];
@@ -176,18 +189,17 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
                     // Check if the note is visible on the screen
                     if y_pos + note_dim > min_y && y_pos < max_y {
                         let note_rect = Rectangle::new(
-                            x_pos + window_width / 2.0 - note_dim / 2.0,
+                            x_pos + half_window_width - half_note_dim,
                             y_pos,
                             note_dim,
                             note_dim,
                         );
 
                         // Get note color by the instrument index
-                        let mut color = match instrument_colors.get(&note.instrument) {
-                            Some(&color) => color,
-                            None => Color::WHITE,
-                        }
-                        .clone();
+                        let mut color = instrument_colors
+                            .get(&note.instrument)
+                            .copied()
+                            .unwrap_or(Color::WHITE);
 
                         // convet note.velocity  0-100 to 0-255
                         color = color.alpha(((note.volume as f32 / 100.0) * 255.0).round() as f32);
@@ -196,39 +208,31 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
                         d.draw_texture_pro(
                             note_texture,
                             note_source_rec,
-                            Rectangle::new(
-                                note_rect.x,
-                                note_rect.y,
-                                note_rect.width,
-                                note_rect.height,
-                            ),
-                            Vector2::new(0.0, 0.0),
+                            note_rect,
+                            Vector2::zero(),
                             0.0,
                             color,
                         );
 
                         // Draw the tone (note name) on the note
                         let text = &piano_key.label;
-
-                        // Center text horizontally and vertically within the note block
                         let font_size = if text.len() > 2 {
-                            app_state.song_state.font_size_3
+                            font_size_3
                         } else {
-                            app_state.song_state.font_size_2
+                            font_size_2
                         };
-                        let text_dim = font.measure_text(text, font_size, 0.);
-                        let text_x = x_pos + window_width / 2.0 - text_dim.x / 2.;
-                        let text_y = y_pos + note_dim / 2.0 - text_dim.y / 2.;
-                        // Draw the text
-                        //d.draw_text(text, text_x, text_y, font_size, Color::WHITE);
+                        let text_dim = font.measure_text(text, font_size, 0.0);
+                        let text_x = x_pos + half_window_width - text_dim.x / 2.0;
+                        let text_y = y_pos + half_note_dim - text_dim.y / 2.0;
+
                         d.draw_text_pro(
-                            &font,
+                            font,
                             text,
-                            Vector2::new(text_x as f32, text_y as f32),
+                            Vector2::new(text_x, text_y),
                             Vector2::new(0.5, 0.5),
                             0.0,
                             font_size,
-                            0.,
+                            0.0,
                             Color::WHITE,
                         );
 
