@@ -95,7 +95,13 @@ impl<'a> AudioEngine<'a> {
             // Get a sound from the pool or create a new one
             let sound = if self.sound_pool.len() >= self.pool_size {
                 // Pool is full, reuse the oldest sound
-                let old_sound = self.sound_pool.pop_front().unwrap();
+                let old_sound = match self.sound_pool.pop_front() {
+                    None => {
+                        log::warn!("Sound pool is empty, cannot reuse sound");
+                        continue;
+                    }
+                    Some(sound) => sound,
+                };
 
                 // Stop the sound if it's playing
                 old_sound.stop();

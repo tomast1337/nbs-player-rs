@@ -18,9 +18,16 @@ fn load_from_bytes(
     bytes: &[u8],
     font_size: i32,
 ) -> Result<Font, FontError> {
-    let font = rl
-        .load_font_from_memory(thread, ".ttf", bytes, font_size, None)
-        .unwrap();
+    let font = match rl.load_font_from_memory(thread, ".ttf", bytes, font_size, None) {
+        Err(_) => {
+            log::error!("Failed to load font from memory");
+            return Err(FontError::LoadError());
+        }
+        Ok(font) => {
+            log::info!("Font loaded successfully");
+            font
+        }
+    };
     Ok(font)
 }
 

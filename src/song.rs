@@ -22,14 +22,37 @@ fn load_nbs_from_zip<'a>(bytes: &'a [u8]) -> SongData<'a> {
 
     // Extract NBS song
     let nbs_data = {
-        let mut nbs_file = zip.by_name("song.nbs").unwrap();
+        let mut nbs_file = match zip.by_name("song.nbs") {
+            Ok(file) => file,
+            Err(_) => {
+                log::error!("Failed to find song.nbs in ZIP archive");
+                panic!("Failed to find song.nbs in ZIP archive");
+            }
+        };
         let mut data = Vec::new();
-        nbs_file.read_to_end(&mut data).unwrap();
+        match nbs_file.read_to_end(&mut data) {
+            Ok(_) => {
+                log::info!("Successfully read song.nbs from ZIP archive");
+            }
+            Err(err) => {
+                log::error!("Failed to read song.nbs: {}", err);
+                panic!("Failed to read song.nbs: {}", err);
+            }
+        }
         data
     };
 
     let mut song_parser = NbsParser::new(&nbs_data);
-    let song = song_parser.parse().unwrap();
+    let song = match song_parser.parse() {
+        Ok(song) => {
+            log::info!("Successfully parsed NBS file");
+            song
+        }
+        Err(err) => {
+            log::error!("Failed to parse NBS file: {}", err);
+            panic!("Failed to parse NBS file: {}", err);
+        }
+    };
 
     let instruments = &song.instruments;
 

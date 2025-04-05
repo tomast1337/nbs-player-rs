@@ -104,7 +104,13 @@ pub fn generate_instrument_palette() -> HashMap<u32, Color> {
 
     // Process the base colors
     for &(id, color_str) in &INSTRUMENT_COLOR_PALETTE {
-        let mut color = Color::from_hex(color_str).unwrap();
+        let mut color = match Color::from_hex(color_str) {
+            Ok(c) => c,
+            Err(_) => {
+                log::warn!("Invalid color string: {}", color_str);
+                Color::WHITE // Fallback to white if the color string is invalid
+            }
+        };
         color.a = ALPHA;
         instrument_colors.insert(id, color);
     }
