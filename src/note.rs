@@ -9,7 +9,6 @@ use crate::{app_state::AppState, audio::AudioClip, utils};
 pub struct NoteBlock {
     pub instrument: u32,
     pub key: u8,
-    //pub tone: f32,
     pub frequency_ratio: f32,
     pub volume: f32,
     pub pan: f32,
@@ -54,12 +53,9 @@ pub fn get_note_blocks(
             let frequency_ratio = utils::fast_pow2((key + (pitch / 100.0) - tone) * INV_12);
             let volume = velocity / 100.0;
             let pan = ((panning + 100.0) / 200.0) - 0.5;
-
-            //let layer = &song.layers[note.layer as usize];
             note_blocks[tick].push(NoteBlock {
                 instrument: note.instrument as u32,
                 key: note.key,
-                //tone,
                 frequency_ratio,
                 volume,
                 pan,
