@@ -4,6 +4,7 @@ use log;
 use nbs_rs::{NbsFile, NbsParser};
 
 /// Determine whether to load from a ZIP or a normal file
+#[inline]
 fn is_zip_file(bytes: &[u8]) -> bool {
     bytes.starts_with(&[0x50, 0x4B, 0x03, 0x04])
 }
