@@ -2,7 +2,7 @@ use std::collections::HashMap;
 
 use raylib::prelude::*;
 
-use crate::app_state::AppState;
+use crate::{app_state::AppState, utils};
 #[derive(Debug, Clone)]
 pub struct PianoProps {
     pub key_spacing: f32,
@@ -23,7 +23,10 @@ pub struct PianoKey {
     pub is_white: bool,
     pub press_offset: f32,
     pub press_velocity: f32,
+    pub tints: Vec<(Color, f32)>,
 }
+
+const TINTS_SIZE: usize = 2;
 
 impl PianoKey {
     fn new(key: u8, label: &str, is_white: bool, white_key_index: Option<usize>) -> Self {
@@ -35,144 +38,90 @@ impl PianoKey {
             is_pressed: false,
             press_offset: 0.0,
             press_velocity: 0.0,
+            tints: Vec::with_capacity(TINTS_SIZE),
+        }
+    }
+
+    fn set_tint(&mut self, color: Color, weight: f32) {
+        // Insert new tint at the front (top of the pile)
+        self.tints.insert(0, (color, weight));
+
+        // If we exceed the size, remove the oldest (bottom of the pile)
+        if self.tints.len() > TINTS_SIZE {
+            self.tints.pop(); // removes the last item
+        }
+    }
+    pub fn press(&mut self, tint: Option<(&Color, f32)>) {
+        self.is_pressed = true;
+        self.press_offset = 0.0;
+        self.press_velocity = 0.0;
+        if let Some(tint) = tint {
+            self.set_tint(tint.0.clone(), tint.1);
         }
     }
 }
 
 pub fn generate_piano_keys() -> (Vec<PianoKey>, HashMap<u8, usize>) {
-    let white_keys: [(&str, i32); 52] = [
-        ("A0", 21),
-        ("B0", 23),
-        ("C1", 24),
-        ("D1", 26),
-        ("E1", 28),
-        ("F1", 29),
-        ("G1", 31),
-        ("A1", 33),
-        ("B1", 35),
-        ("C2", 36),
-        ("D2", 38),
-        ("E2", 40),
-        ("F2", 41),
-        ("G2", 43),
-        ("A2", 45),
-        ("B2", 47),
-        ("C3", 48),
-        ("D3", 50),
-        ("E3", 52),
-        ("F3", 53),
-        ("G3", 55),
-        ("A3", 57),
-        ("B3", 59),
-        ("C4", 60),
-        ("D4", 62),
-        ("E4", 64),
-        ("F4", 65),
-        ("G4", 67),
-        ("A4", 69),
-        ("B4", 71),
-        ("C5", 72),
-        ("D5", 74),
-        ("E5", 76),
-        ("F5", 77),
-        ("G5", 79),
-        ("A5", 81),
-        ("B5", 83),
-        ("C6", 84),
-        ("D6", 86),
-        ("E6", 88),
-        ("F6", 89),
-        ("G6", 91),
-        ("A6", 93),
-        ("B6", 95),
-        ("C7", 96),
-        ("D7", 98),
-        ("E7", 100),
-        ("F7", 101),
-        ("G7", 103),
-        ("A7", 105),
-        ("B7", 107),
-        ("C8", 108),
+    const NOTE_NAMES: [&str; 12] = [
+        "C", "C#", "D", "D#", "E", "F", "F#", "G", "G#", "A", "A#", "B",
     ];
+    const START_MIDI: u8 = 21;
+    const END_MIDI: u8 = 108;
 
-    let black_keys: [(&str, i32); 36] = [
-        ("A#0", 22),
-        ("C#1", 25),
-        ("D#1", 27),
-        ("F#1", 30),
-        ("G#1", 32),
-        ("A#1", 34),
-        ("C#2", 37),
-        ("D#2", 39),
-        ("F#2", 42),
-        ("G#2", 44),
-        ("A#2", 46),
-        ("C#3", 49),
-        ("D#3", 51),
-        ("F#3", 54),
-        ("G#3", 56),
-        ("A#3", 58),
-        ("C#4", 61),
-        ("D#4", 63),
-        ("F#4", 66),
-        ("G#4", 68),
-        ("A#4", 70),
-        ("C#5", 73),
-        ("D#5", 75),
-        ("F#5", 78),
-        ("G#5", 80),
-        ("A#5", 82),
-        ("C#6", 85),
-        ("D#6", 87),
-        ("F#6", 90),
-        ("G#6", 92),
-        ("A#6", 94),
-        ("C#7", 97),
-        ("D#7", 99),
-        ("F#7", 102),
-        ("G#7", 104),
-        ("A#7", 106),
-    ];
+    let mut white_labels = Vec::with_capacity(52);
+    let mut black_labels = Vec::with_capacity(36);
 
-    let white_keys_vec: Vec<PianoKey> = white_keys
+    for midi in START_MIDI..=END_MIDI {
+        let octave = (midi / 12) as i32 - 1;
+        let name = format!("{}{}", NOTE_NAMES[(midi % 12) as usize], octave);
+        let leaked: &'static str = Box::leak(name.into_boxed_str());
+
+        if leaked.contains('#') {
+            black_labels.push((leaked, midi));
+        } else {
+            white_labels.push((leaked, midi));
+        }
+    }
+
+    assert_eq!(white_labels.len(), 52);
+    assert_eq!(black_labels.len(), 36);
+
+    let white_keys: Vec<PianoKey> = white_labels
         .iter()
         .enumerate()
-        .map(|(index, (label, key))| PianoKey::new(*key as u8, label, true, Some(index)))
+        .map(|(index, &(label, midi))| PianoKey::new(midi, label, true, Some(index)))
         .collect();
 
-    let black_keys_vec: Vec<PianoKey> = black_keys
+    let black_keys: Vec<PianoKey> = black_labels
         .iter()
-        .map(|(label, key)| {
-            let white_key_index = white_keys_vec
+        .map(|&(label, midi)| {
+            let pos = white_keys
                 .iter()
-                .position(|white_key| white_key.key > *key as u8)
-                .map(|index| index.saturating_sub(1));
-
-            PianoKey::new(*key as u8, label, false, white_key_index)
+                .position(|k| k.key > midi)
+                .map(|i| i.saturating_sub(1));
+            PianoKey::new(midi, label, false, pos)
         })
         .collect();
 
-    // Combine into single vector
-    let mut all_keys = white_keys_vec;
-    all_keys.extend(black_keys_vec);
+    let mut all_keys = white_keys.clone();
+    all_keys.extend(black_keys);
 
-    // Create hashmap for quick lookup
-    let mut key_map = HashMap::new();
-    for (idx, key) in all_keys.iter().enumerate() {
-        key_map.insert(key.key, idx);
-    }
+    let key_map: HashMap<u8, usize> = all_keys
+        .iter()
+        .enumerate()
+        .map(|(i, k)| (k.key, i))
+        .collect();
 
     (all_keys, key_map)
 }
+const PRESS_FORCE: f32 = 50000000.0; // Press force
+const DAMPING: f32 = 20.0; // Damping factor
+const SPRING_CONSTANT: f32 = 700.0; // Spring constant
+const MAX_OFFSET: f32 = 10.0; // Maximum offset
+const MIN_OFFSET: f32 = -10.0; // Minimum offset
+const STOP_THRESHOLD: f32 = 0.1; // Threshold to stop animation
 
 pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
-    const PRESS_FORCE: f32 = 50000000.0; // Press force
-    const DAMPING: f32 = 20.0; // Damping factor
-    const SPRING_CONSTANT: f32 = 700.0; // Spring constant
-    const MAX_OFFSET: f32 = 10.0; // Maximum offset
-    const MIN_OFFSET: f32 = -10.0; // Minimum offset
-    const STOP_THRESHOLD: f32 = 0.1; // Threshold to stop animation
-
     // Precompute constants
     let damping_delta = DAMPING * delta_time;
     let press_force_delta = PRESS_FORCE * delta_time;
@@ -180,10 +129,8 @@ pub fn update_key_animation(keys: &mut [PianoKey], delta_time: f32) {
 
     for key in keys.iter_mut() {
         let force = if key.is_pressed {
-            // Force when key is pressed
             -press_force_delta - damping_delta * (key.press_velocity + 1000.0)
         } else {
-            // Force when key is released
             -key.press_offset * spring_constant_delta - damping_delta * key.press_velocity
         };
 
@@ -246,6 +193,12 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
         let x = piano_x + (key.white_key_index.unwrap() as f32 * (white_key_width + key_spacing));
         let y = piano_y - key.press_offset;
 
+        let key_color = if key.press_offset != 0.0 && !key.tints.is_empty() {
+            utils::blend_colors(theme.white_key_color, &key.tints)
+        } else {
+            theme.white_key_color
+        };
+
         d.draw_texture_pro(
             &key_texture,
             Rectangle::new(
@@ -257,7 +210,7 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
             Rectangle::new(x, y, white_key_width, white_key_height),
             Vector2::new(0.0, 0.0),
             0.0,
-            theme.white_key_color,
+            key_color,
         );
 
         // Calculate font size to fit within the key
@@ -290,6 +243,12 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
             let x = piano_x + (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
             let y = piano_y - 5.0 - key.press_offset;
 
+            let key_color = if key.press_offset != 0.0 && !key.tints.is_empty() {
+                utils::blend_colors(theme.black_key_color, &key.tints)
+            } else {
+                theme.black_key_color
+            };
+
             d.draw_texture_pro(
                 &key_texture,
                 Rectangle::new(
@@ -301,7 +260,7 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
                 Rectangle::new(x, y, black_key_width, black_key_height),
                 Vector2::new(0.0, 0.0),
                 0.0,
-                theme.black_key_color,
+                key_color,
             );
 
             // Calculate font size to fit within the key

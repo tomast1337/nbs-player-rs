@@ -36,10 +36,17 @@ impl PianoState {
             key.is_pressed = false;
         }
     }
-    fn trigger_key_press(&mut self, note_blocks: &mut Vec<note::NoteBlock>) {
+    fn trigger_key_press(
+        &mut self,
+        note_blocks: &mut Vec<note::NoteBlock>,
+        note_color_map: &HashMap<u32, Color>,
+    ) {
         for note in note_blocks {
+            let instrument = note.instrument;
             if let Some(&key_index) = self.key_map.get(&note.key) {
-                self.all_keys[key_index].is_pressed = true;
+                let color = note_color_map.get(&(instrument)).unwrap_or(&Color::WHITE);
+                let tint = (color, note.volume / 5.);
+                self.all_keys[key_index].press(Some(tint));
             }
         }
     }
@@ -57,7 +64,7 @@ pub struct SongState<'a> {
     pub font_size_2: f32,                       // Font size for the note blocks with flat notes
     pub key_spacing: f32,                       // Spacing between keys
     pub played_ticks: Vec<bool>,                // Vector to track played ticks
-    pub instrument_colors: std::collections::HashMap<u32, Color>, // Map of instrument colors
+    pub instrument_colors: HashMap<u32, Color>, // Map of instrument colors
     pub is_paused: bool,                        // Flag to check if the song is paused
     pub nbs_file: &'a NbsFile,                  // Reference to the NBS file
     pub extra_sounds: Vec<(&'a [u8], f64)>,     // Extra sounds to be played
@@ -337,7 +344,8 @@ impl<'a> AppState<'a> {
             .note_blocks
             .get_mut(self.song_state.current_tick as usize)
         {
-            self.piano_state.trigger_key_press(notes);
+            self.piano_state
+                .trigger_key_press(notes, &self.song_state.instrument_colors);
         }
 
         // Update the controls panel position based on mouse activity

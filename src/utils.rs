@@ -1,3 +1,5 @@
+use raylib::color::Color;
+
 /// Formats a time in seconds to a string in the format "mm:ss".
 pub fn time_formatter(time: f32) -> String {
     let minutes = (time / 60.0).floor() as u32;
@@ -18,10 +20,7 @@ pub fn load_file(file_path: &str) -> Result<Vec<u8>, std::io::Error> {
         // Handle the error
         Err(std::io::Error::last_os_error())
     } else {
-        println!(
-            "[RUST + WASM] File opened successfully with file descriptor: {}",
-            fd
-        );
+        println!("File opened successfully with file descriptor: {}", fd);
 
         // Read file content into a buffer
         let mut buffer = Vec::new();
@@ -81,6 +80,35 @@ pub fn fast_pow2(x: f32) -> f32 {
     } else {
         p / (1 << (-x0 as i32)) as f32
     }
+}
+
+pub fn blend_colors(base: Color, tints: &[(Color, f32)]) -> Color {
+    let mut r = base.r as f32;
+    let mut g = base.g as f32;
+    let mut b = base.b as f32;
+    let mut a = base.a as f32;
+
+    let n = tints.len().max(1) as f32;
+    let inv_n = 1.0 / n;
+
+    for i in 0..tints.len() {
+        let (color, weight) = &tints[i];
+        let position_factor = (n - i as f32) * inv_n;
+        let effective_weight = weight * position_factor;
+        let inv_weight = 1.0 - effective_weight;
+
+        r = r * inv_weight + color.r as f32 * effective_weight;
+        g = g * inv_weight + color.g as f32 * effective_weight;
+        b = b * inv_weight + color.b as f32 * effective_weight;
+        a = a * inv_weight + color.a as f32 * effective_weight;
+    }
+
+    Color::new(
+        r.round() as u8,
+        g.round() as u8,
+        b.round() as u8,
+        a.round() as u8,
+    )
 }
 
 /*
