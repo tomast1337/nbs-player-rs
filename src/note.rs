@@ -145,6 +145,13 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
     let min_y = 0.;
     let max_y = window_height - piano_props.white_key_height;
 
+    let note_source_rec = Rectangle::new(
+        0.0,
+        0.0,
+        note_texture.width as f32,
+        note_texture.height as f32,
+    );
+
     // Count notes being rendered
     let mut notes_rendered = 0;
 
@@ -188,12 +195,7 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
                         // Draw the note texture
                         d.draw_texture_pro(
                             note_texture,
-                            Rectangle::new(
-                                0.0,
-                                0.0,
-                                note_texture.width as f32,
-                                note_texture.height as f32,
-                            ),
+                            note_source_rec,
                             Rectangle::new(
                                 note_rect.x,
                                 note_rect.y,
