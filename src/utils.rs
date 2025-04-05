@@ -1,6 +1,7 @@
 use raylib::color::Color;
 
 /// Formats a time in seconds to a string in the format "mm:ss".
+#[inline]
 pub fn time_formatter(time: f32) -> String {
     let minutes = (time / 60.0).floor() as u32;
     let seconds = (time % 60.0) as u32;
@@ -8,8 +9,9 @@ pub fn time_formatter(time: f32) -> String {
 }
 
 /// Linear interpolation function for smooth animation
+#[inline]
 pub fn lerp(start: f32, end: f32, t: f32) -> f32 {
-    start + (end - start) * t
+    start.mul_add(1.0 - t, end * t)
 }
 
 pub fn load_file(file_path: &str) -> Result<Vec<u8>, std::io::Error> {
