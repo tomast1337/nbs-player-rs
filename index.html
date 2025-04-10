@@ -72,6 +72,27 @@
             font-weight: bold;
         }
 
+        .song-meta {
+            margin: 15px 0;
+            text-align: center;
+            max-width: 800px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .song-title {
+            font-size: 1.8rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            color: #00bcd4;
+        }
+
+        .song-description {
+            font-size: 1rem;
+            color: #cccccc;
+            font-style: italic;
+        }
+
         button {
             background: rgba(255, 255, 255, 0.1);
             color: white;
@@ -95,12 +116,23 @@
             overflow-y: auto;
             background: rgba(0, 0, 0, 0.2);
             padding: 10px;
-
-            /*
-            Style the scrollbar
-            */
-            scrollbar-width: 48px;
+            border-radius: 8px;
+            scrollbar-width: thin;
             scrollbar-color: #00bcd4 #2a2a40;
+        }
+
+        /* Custom scrollbar for WebKit browsers */
+        .playlist::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .playlist::-webkit-scrollbar-track {
+            background: #2a2a40;
+        }
+
+        .playlist::-webkit-scrollbar-thumb {
+            background-color: #00bcd4;
+            border-radius: 4px;
         }
 
         .playlist-item {
@@ -132,6 +164,8 @@
             margin-top: 30px;
             font-size: 0.9rem;
             color: #aaa;
+            text-align: center;
+            max-width: 800px;
         }
 
         footer a {
@@ -143,6 +177,40 @@
         footer a:hover {
             color: #00e5ff;
         }
+
+        .theme-indicator {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            margin-right: 10px;
+            vertical-align: middle;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                width: 95%;
+                padding: 15px;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .song-title {
+                font-size: 1.4rem;
+            }
+
+            .controls {
+                flex-direction: column;
+                gap: 10px;
+            }
+
+            button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 
@@ -151,208 +219,15 @@
         <h1>Rust Wasm NBS Player</h1>
         <div class="song-info" id="songInfo">Loading...</div>
         <canvas tabindex="1" id="canvas"></canvas>
+        <div class="song-meta">
+            <div class="song-description" id="songDesc"></div>
+        </div>
         <div class="controls">
             <button id="prevBtn">Previous</button>
             <button id="nextBtn">Next</button>
         </div>
         <div class="playlist" id="playlist"></div>
-        <script>
-            // ADD THE <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"> TAG TO THE PAGE
-            const scriptTag = document.createElement("script");
-            scriptTag.src = "./target/wasm32-unknown-emscripten/release/nbs-player-rs.js";
-
-            // Append the script tag to the body
-            document.body.appendChild(scriptTag);
-
-            const themes = [
-                {
-                    background_color: "#2E1A1A", // Dark red-brown
-                    accent_color: "#FF0000", // Blood red
-                    text_color: "#E0E0E0", // Light gray
-                    white_key_color: "#444444", // Dark gray
-                    black_key_color: "#1A1A1A", // Near black
-                    white_text_key_color: "#E0E0E0", // Light gray
-                    black_text_key_color: "#FF0000" // Blood red
-                },
-                {
-                    background_color: "#6B4423", // Brown (like wood)
-                    accent_color: "#8B4513", // Saddle brown
-                    text_color: "#FAFAD2", // Light goldenrod
-                    white_key_color: "#D2B48C", // Tan (like parchment)
-                    black_key_color: "#3B2F2F", // Dark brown
-                    white_text_key_color: "#1A1A1A", // Dark gray
-                    black_text_key_color: "#FAFAD2" // Light goldenrod
-                },
-                {
-                    background_color: "#0A0A1E", // Deep space blue
-                    accent_color: "#00FF00", // Neon green
-                    text_color: "#FFFFFF", // Pure white
-                    white_key_color: "#1E1E1E", // Dark gray
-                    black_key_color: "#000000", // Pure black
-                    white_text_key_color: "#00FF00", // Neon green
-                    black_text_key_color: "#FFFFFF" // Pure white
-                },
-                {
-                    background_color: "#228B22", // Forest green
-                    accent_color: "#8A2BE2", // Blue violet (magical accents)
-                    text_color: "#F0FFF0", // Honeydew
-                    white_key_color: "#F5DEB3", // Wheat (like tree bark)
-                    black_key_color: "#2F4F4F", // Dark slate gray
-                    white_text_key_color: "#1A1A1A", // Dark gray
-                    black_text_key_color: "#F0FFF0" // Honeydew
-                },
-                {
-                    background_color: "#1A1A2E", // Deep purple-blue
-                    accent_color: "#FF007F", // Bright pink
-                    text_color: "#00FFFF", // Cyan
-                    white_key_color: "#333333", // Dark gray
-                    black_key_color: "#000000", // Pure black
-                    white_text_key_color: "#00FFFF", // Cyan
-                    black_text_key_color: "#FF007F" // Bright pink
-                },
-                {
-                    background_color: "#8B7355", // Burnt sienna
-                    accent_color: "#DAA520", // Goldenrod
-                    text_color: "#FFF8DC", // Cornsilk
-                    white_key_color: "#F5F5DC", // Beige
-                    black_key_color: "#654321", // Dark brown
-                    white_text_key_color: "#1A1A1A", // Dark gray
-                    black_text_key_color: "#FFF8DC" // Cornsilk
-                },
-                {
-                    background_color: "#87CEEB", // Sky blue
-                    accent_color: "#FF69B4", // Hot pink
-                    text_color: "#FFFFFF", // Pure white
-                    white_key_color: "#E6E6FA", // Lavender
-                    black_key_color: "#9370DB", // Medium purple
-                    white_text_key_color: "#1A1A1A", // Dark gray
-                    black_text_key_color: "#FFFFFF" // Pure white
-                }
-            ]
-
-            const songs = [
-                "Bad Piggies Theme.nbs",
-                "bo en - My Time.zip",
-                "Mesmerizer.zip",
-                "Rush E.nbs",
-                "turkish_march.nbs",
-            ];
-
-            // Store current song index in localStorage
-            let currentSongIndex = localStorage.getItem('currentSongIndex');
-            if (currentSongIndex === null) {
-                currentSongIndex = 0;
-            } else {
-                currentSongIndex = parseInt(currentSongIndex);
-                if (currentSongIndex >= songs.length) {
-                    currentSongIndex = 0;
-                }
-            }
-
-            const songInfoElement = document.getElementById('songInfo');
-            const prevBtn = document.getElementById('prevBtn');
-            const nextBtn = document.getElementById('nextBtn');
-            const playlistElement = document.getElementById('playlist');
-
-            function updateUI() {
-                // Update song info
-                songInfoElement.textContent = `Now Playing: ${songs[currentSongIndex]}`;
-
-                // Update playlist display
-                playlistElement.innerHTML = '';
-                songs.forEach((song, index) => {
-                    const item = document.createElement('div');
-                    item.className = `playlist-item ${index === currentSongIndex ? 'current' : ''}`;
-                    item.textContent = song;
-                    item.addEventListener('click', () => {
-                        loadSong(index);
-                    });
-                    playlistElement.appendChild(item);
-                });
-            }
-
-            function loadSong(index) {
-                currentSongIndex = index;
-                localStorage.setItem('currentSongIndex', currentSongIndex);
-
-                // Reload the page to play the new song
-                location.reload();
-            }
-
-            function prevSong() {
-                currentSongIndex = (currentSongIndex - 1 + songs.length) % songs.length;
-                loadSong(currentSongIndex);
-            }
-
-            function nextSong() {
-                currentSongIndex = (currentSongIndex + 1) % songs.length;
-                loadSong(currentSongIndex);
-            }
-
-            prevBtn.addEventListener('click', prevSong);
-            nextBtn.addEventListener('click', nextSong);
-
-            let fullscreen_window_width = window.screen.width;
-            let fullscreen_window_height = window.screen.height;
-            // if window width is less than height, swap them
-            if (fullscreen_window_width < fullscreen_window_height) {
-                const temp = fullscreen_window_width;
-                fullscreen_window_width = fullscreen_window_height;
-                fullscreen_window_height = temp;
-            }
-
-            fullscreen_window_width = Math.floor(fullscreen_window_width * 0.75);
-            fullscreen_window_height = Math.floor(fullscreen_window_height * 0.75);
-
-            // 720p resolution
-            const window_width = 1280;
-            const window_height = 720;
-
-            const arguments = {
-                font_id: Math.floor(Math.random() * 6),
-                window_width: fullscreen_window_width,
-                window_height: fullscreen_window_height,
-                theme: themes[Math.floor(Math.random() * themes.length)],
-            };
-
-            const canvas = document.getElementById("canvas");
-            // if spacebar is pressed do not roll the screen
-            canvas.addEventListener("keydown", function (event) {
-                if (event.code === "Space") {
-                    event.preventDefault();
-                }
-            });
-
-            var Module = {
-                canvas: canvas,
-                arguments: [
-                    JSON.stringify(arguments),
-                ],
-                noInitialRun: true,
-                noExitRuntime: false, // Allow the runtime to exit
-                preInit: async function () {
-                    updateUI();
-
-                    // wait 2 seconds before starting
-                    await new Promise(resolve => setTimeout(resolve, 200));
-                    const song_url = `./test-assets/${songs[currentSongIndex]}`;
-                    const response = await fetch(song_url);
-                    const arrayBuffer = await response.arrayBuffer();
-                    const byteArray = new Uint8Array(arrayBuffer);
-                    FS.writeFile("/song.nbsx", byteArray);
-                    callMain(Module.arguments);
-                }
-            };
-
-            // Add keyboard shortcuts
-            document.addEventListener('keydown', (e) => {
-                if (e.code === 'ArrowLeft') {
-                    prevSong();
-                } else if (e.code === 'ArrowRight') {
-                    nextSong();
-                }
-            });
-        </script>
+        <script defer src="./index.js"></script>
     </div>
 
     <footer>
@@ -369,17 +244,6 @@
         <p>
             This project is a work in progress. If you have any suggestions or issues, please open an issue on GitHub.
         </p>
-        <!--
-                <button id="abort">This is just an example of killing the wasm run time</button>
-        <script>
-            const fullscreenBtn = document.getElementById('abort');
-            fullscreenBtn.addEventListener('click', () => {
-                // abort the wasm run time
-                Module.abort();
-            });
-        </script>
-        -->
-
     </footer>
 </body>
 
