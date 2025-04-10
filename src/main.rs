@@ -15,23 +15,6 @@ mod theme;
 mod utils;
 
 fn main() {
-    // Initialize the logger
-    match SimpleLogger::new().init() {
-        Ok(_) => log::info!("Logger initialized"),
-        Err(err) => {
-            eprintln!("Failed to initialize logger: {}", err);
-            std::process::exit(1);
-        }
-    };
-
-    let data = match utils::load_file("song.nbsx") {
-        Ok(data) => data,
-        Err(err) => {
-            log::error!("Error loading file: {}", err);
-            std::process::exit(1);
-        }
-    };
-
     let args: Vec<String> = env::args().collect();
 
     if args.len() != 2 {
@@ -46,6 +29,23 @@ fn main() {
         Ok(parsed) => parsed,
         Err(err) => {
             log::error!("Error parsing JSON: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    // Initialize the logger
+    match SimpleLogger::new().init() {
+        Ok(_) => log::info!("Logger initialized"),
+        Err(err) => {
+            eprintln!("Failed to initialize logger: {}", err);
+            std::process::exit(1);
+        }
+    };
+
+    let data = match utils::load_file("song.nbsx") {
+        Ok(data) => data,
+        Err(err) => {
+            log::error!("Error loading file: {}", err);
             std::process::exit(1);
         }
     };
