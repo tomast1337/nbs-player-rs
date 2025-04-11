@@ -134,6 +134,10 @@ vec3 water(vec2 uv) {
 
 void main() {
   vec2 uv = gl_FragCoord.xy / iResolution.xy;
+
+  // Add vertical scrolling by offsetting the V coordinate with time
+  uv.y += iTime * speed * 0.01125;
+
   vec3 color = water(uv);
   gl_FragColor = vec4(color, 1.0);
 }

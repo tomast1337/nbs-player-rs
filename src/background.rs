@@ -8,6 +8,7 @@ pub enum BackgroundType {
     Water,
     Plasma,
     Fire,
+    Grass,
 }
 fn load_background_shader(
     rl: &mut raylib::core::RaylibHandle,
@@ -26,6 +27,7 @@ fn load_background_shader(
         BackgroundType::Water => include_str!("../assets/shaders/water_background.frag"),
         BackgroundType::Plasma => include_str!("../assets/shaders/plasma_background.frag"),
         BackgroundType::Fire => include_str!("../assets/shaders/fire_background.frag"),
+        BackgroundType::Grass => include_str!("../assets/shaders/grass_background.frag"),
     };
     let fs_code = format!("{}{}", shader_header, fs_code);
     let background_shader = rl.load_shader_from_memory(thread, None, Some(&fs_code));
@@ -72,9 +74,10 @@ impl Background {
 
         let speed = match background {
             BackgroundType::Plain => 0.0,
-            BackgroundType::Water => 5.0,
+            BackgroundType::Water => 2.5,
             BackgroundType::Plasma => 0.012,
             BackgroundType::Fire => 1.0,
+            BackgroundType::Grass => 0.4,
         };
 
         Self {

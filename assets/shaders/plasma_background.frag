@@ -44,6 +44,9 @@ void main() {
   // Normalized coordinates (-1 to 1)
   vec2 uv = gl_FragCoord.xy / iResolution.xy;
   float t = iTime * speed;
+  // pixelated UVs
+    uv = floor(uv * 100.0) / 100.0;
+    uv.x *= iResolution.x / iResolution.y;
 
   uv *= scale;
   float h = noise(vec3(uv * 2., t));
