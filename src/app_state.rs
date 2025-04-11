@@ -342,7 +342,6 @@ impl<'a> AppState<'a> {
     }
 
     pub fn draw(&self, d: &mut RaylibDrawHandle<'_>) {
-        d.clear_background(self.theme.background_color);
         // Draw notes
         note::draw_notes(d, self);
         // draw piano keys
