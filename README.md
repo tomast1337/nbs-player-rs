@@ -60,17 +60,18 @@ Then, open your browser the link given by the server.
 ```bash
 cargo run -- "$(cat <<EOF
 {
-  "font_id": 5,
+  "font_id": "PixelPlay",
+  "background": "Plasma",
   "window_width": 1280,
   "window_height": 720,
   "theme": {
-    "background_color": "#2E1A1A",
-    "accent_color": "#FF0000",
-    "text_color": "#E0E0E0",
-    "white_key_color": "#444444",
-    "black_key_color": "#1A1A1A",
-    "white_text_key_color": "#E0E0E0",
-    "black_text_key_color": "#FF0000"
+    "background_color": "#FFE4E1",
+    "accent_color": "#D4A59A",
+    "text_color": "#5D4037",
+    "white_key_color": "#FFF0F5",
+    "black_key_color": "#E6C7C2",
+    "white_text_key_color": "#5D4037",
+    "black_text_key_color": "#D4A59A"
   }
 }
 EOF
