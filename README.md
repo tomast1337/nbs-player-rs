@@ -1,6 +1,6 @@
 # Note Block Studio Rust Player
 
-![image](https://github.com/user-attachments/assets/6db2b940-c75f-408c-8398-eeead55f452f)
+![image](https://github.com/user-attachments/assets/bc7b8387-dcbe-4f2a-b93e-fef2b627dd43)
 
 This is a Rust player for the Note Block Studio format. It is a work in progress and is not yet complete.
 
