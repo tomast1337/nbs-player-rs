@@ -9,6 +9,8 @@ pub enum BackgroundType {
     Plasma,
     Fire,
     Grass,
+    Sand,
+    Voronoise,
 }
 fn load_background_shader(
     rl: &mut raylib::core::RaylibHandle,
@@ -28,6 +30,8 @@ fn load_background_shader(
         BackgroundType::Plasma => include_str!("../assets/shaders/plasma_background.frag"),
         BackgroundType::Fire => include_str!("../assets/shaders/fire_background.frag"),
         BackgroundType::Grass => include_str!("../assets/shaders/grass_background.frag"),
+        BackgroundType::Sand => include_str!("../assets/shaders/sand_background.frag"),
+        BackgroundType::Voronoise => include_str!("../assets/shaders/voronoise_background.frag"),
     };
     let fs_code = format!("{}{}", shader_header, fs_code);
     let background_shader = rl.load_shader_from_memory(thread, None, Some(&fs_code));
@@ -78,6 +82,8 @@ impl Background {
             BackgroundType::Plasma => 0.012,
             BackgroundType::Fire => 1.0,
             BackgroundType::Grass => 0.4,
+            BackgroundType::Sand => 0.2,
+            BackgroundType::Voronoise => 0.1,
         };
 
         Self {
