@@ -1,12 +1,7 @@
-#version 330
-
-// Input from vertex shader
-out vec4 finalColor;
-in vec4 gl_FragCoord;
 // Uniforms
 uniform vec2 iResolution;
 uniform float iTime;
-uniform float speed; 
+uniform float speed;
 uniform vec3 background_color;
 uniform vec3 accent_color;
 uniform vec3 text_color;
@@ -15,9 +10,8 @@ uniform vec3 black_key_color;
 uniform vec3 white_text_key_color;
 uniform vec3 black_text_key_color;
 
-
 #define layers 5
-#define scale 1.2
+#define scale 5.0
 
 vec3 hash(vec3 p) {
   p = vec3(dot(p, vec3(127.1, 311.7, 74.7)), dot(p, vec3(269.5, 183.3, 246.1)),
@@ -68,7 +62,7 @@ void main() {
   float colorValue = 0.5 * sin(uv.x + uv.y) + 0.5;
 
   // Map the colorValue to your 2-color palette
-  vec3 col= mix(background_color, accent_color, colorValue);
+  vec3 col = mix(background_color, accent_color, colorValue);
 
-  finalColor = vec4(col, 1.0);
+  gl_FragColor = vec4(col, 1.0);
 }

@@ -66,10 +66,19 @@ fn main() {
     app_state.song_state.note_blocks =
         note::get_note_blocks(&app_state.song_state.nbs_file, &audio_engine.sounds);
 
+    let shader_header = {
+        if cfg!(target_arch = "wasm32") {
+            "#version 100\n\nprecision mediump float;\n"
+        } else {
+            "#version 330 core\n"
+        }
+    };
+
     // Simple shader implementation
     let fs_code = include_str!("../assets/shaders/plasma_background.frag");
+    let fs_code = format!("{}{}", shader_header, fs_code);
 
-    let mut shader = rl.load_shader_from_memory(&thread, None, Some(fs_code));
+    let mut shader = rl.load_shader_from_memory(&thread, None, Some(&fs_code));
     let i_time_loc = shader.get_shader_location("iTime"); // float iTime;
     let i_resolution_loc = shader.get_shader_location("iResolution"); // vec2 iResolution;
     let background_color_loc = shader.get_shader_location("background_color"); // vec3 color1;
