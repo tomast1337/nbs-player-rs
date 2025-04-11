@@ -203,8 +203,8 @@ pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> i32 {
                             .copied()
                             .unwrap_or(Color::WHITE);
 
-                        // convet note.velocity  0-100 to 0-255
-                        color = color.alpha(((note.volume as f32 / 100.0) * 255.0).round() as f32);
+                        // convet note.velocity  0-100 to 50-255
+                        color = color.alpha((note.volume * 205.0) + 50.);
 
                         // Draw the note texture
                         d.draw_texture_pro(
