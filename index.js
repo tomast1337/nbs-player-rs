@@ -96,6 +96,15 @@ const themes = {
     white_text_key_color: "#00B4D8",
     black_text_key_color: "#FFFFFF",
   },
+  BLUE_SKY: {
+    background_color: "#87CEEB", // Light blue
+    accent_color: "#4682B4", // Steel blue
+    text_color: "#FFFFFF",
+    white_key_color: "#F0F8FF",
+    black_key_color: "#B0C4DE",
+    white_text_key_color: "#4682B4",
+    black_text_key_color: "#FFFFFF",
+  },
   ROSE_SUNSET: {
     background_color: "#FFE4E1", // Soft pink
     accent_color: "#D4A59A", // Rosé
@@ -148,51 +157,58 @@ const songs = [
     filename: "Espresso.zip",
     title: "Sabrina Carpenter - Espresso",
     description: "https://noteblock.world/song/zya0Bgz4rd",
-    theme: themes.GOLDEN_PARCHMENT,
-    fontId: 2,
+    theme: themes.ROSE_SUNSET,
+    fontId: "PixelPlay",
+    background: "Plasma",
   },
   {
     filename: "360.zip",
     title: "Charli XCX - 360",
     description:
       "Charli XCX - 360 is a song by Charli XCX, an English singer and songwriter. The song features a catchy pop melody and upbeat production.\n\nhttps://noteblock.world/song/0N1vDGTtSF",
-    theme: themes.ROSE_SUNSET,
-    fontId: 1,
+    theme: themes.SAKURA_GARDEN,
+    fontId: "Romulus",
+    background: "Water",
   },
   {
     filename: "bo en - My Time.zip",
     title: "bo en - My Time",
     description: `Popular song by bo en featured in OMORI.\n\nhttps://noteblock.world/song/LtZaBBTBfS`,
-    theme: themes.COTTON_CANDY,
-    fontId: 2,
+    theme: themes.BLUE_SKY,
+    fontId: "PixAntiqua",
+    background: "Water",
   },
   {
     filename: "Bad Piggies Theme.nbs",
     title: "Ilmari Hakkola - Bad Piggies Theme",
     description: `The "Bad Piggies Theme" is the main theme of the 2012 video game Bad Piggies, a spinoff of the Angry Birds series. The game features the Bad Piggies as they attempt to steal the Bird's eggs.\n\nhttps://noteblock.world/song/0N1vDGTtSF`,
-    theme: themes.LAVA_LAMP,
-    fontId: 0,
+    theme: themes.MATCHA_LATTE,
+    fontId: "Monocraft",
+    background: "Grass",
   },
   {
     filename: "Rush E.nbs",
     title: "mikamohr2506 - Rush E",
     description: `https://noteblock.world/song/tA0KJdJC5h`,
-    theme: themes.MATCHA_LATTE,
-    fontId: 3,
+    theme: themes.GOLDEN_PARCHMENT,
+    fontId: "PixAntiqua",
+    background: "WaterFall",
   },
   {
     filename: "turkish_march.nbs",
     title: "Turkish March",
     description: "Mozart's famous piano piece, Rondo Alla Turca",
     theme: themes.MIDNIGHT_JAZZ,
-    fontId: 4,
+    fontId: "PixAntiqua",
+    background: "Grass",
   },
   {
     filename: "Darude - Sandstorm.zip",
     title: "Darude - Sandstorm",
     description: "https://noteblock.world/song/zEdaMYZmX0",
     theme: themes.NEON_GRID,
-    fontId: 0,
+    fontId: "Setbackt",
+    background: "Sand",
   },
 
   {
@@ -200,8 +216,9 @@ const songs = [
     title: "Ievan Polkka - Hatsune Miku",
     description:
       "Finnish folk song popularized by Hatsune Miku\n\nhttps://noteblock.world/song/3t6Sk2kdMA",
-    theme: themes.SAKURA_GARDEN,
-    fontId: 1,
+    theme: themes.OBSIDIAN_GLOW,
+    fontId: "PixAntiqua",
+    background: "Voronoise",
   },
 ];
 
@@ -291,6 +308,7 @@ const window_height = 720;
 // Initialize arguments with the current song's theme and font
 const arguments = {
   font_id: songs[currentSongIndex].fontId,
+  background: songs[currentSongIndex].background,
   window_width: fullscreen_window_width,
   window_height: fullscreen_window_height,
   theme: songs[currentSongIndex].theme,
