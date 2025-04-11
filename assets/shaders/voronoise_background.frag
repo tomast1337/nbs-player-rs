@@ -47,13 +47,11 @@ void main() {
 
   // Color blending
   vec3 base = mix(background_color, accent_color, smoothstep(0.0, 1.0, c.y));
-  vec3 keyMix = mix(white_key_color, black_key_color, step(0.5, fract(c.y)));
+  vec3 keyMix = mix(white_key_color, black_key_color, smoothstep(0.0, 1.0, c.y));
 
   float edge = 1.0 - smoothstep(0.08, 0.12, c.x);
-  vec3 glow =
-      mix(white_text_key_color, black_text_key_color, abs(sin(iTime * 2.0)));
 
-  vec3 color = base * (1.0 - c.x * 0.4) + edge * glow + 0.1 * text_color + 0.2 * keyMix;
+  vec3 color = base * (1.0 - c.x * 0.4) + edge * keyMix;
 
 
   gl_FragColor = vec4(color, 1.0);
