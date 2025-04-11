@@ -75,7 +75,7 @@ fn main() {
     };
 
     // Simple shader implementation
-    let fs_code = include_str!("../assets/shaders/plasma_background.frag");
+    let fs_code = include_str!("../assets/shaders/fire_background.frag");
     let fs_code = format!("{}{}", shader_header, fs_code);
 
     let mut shader = rl.load_shader_from_memory(&thread, None, Some(&fs_code));
@@ -104,7 +104,7 @@ fn main() {
             // Set shader uniforms
             shader.set_shader_value(i_time_loc, shader_time);
             shader.set_shader_value(i_resolution_loc, resolution);
-            shader.set_shader_value(speed_loc, 0.012);
+            shader.set_shader_value(speed_loc, 0.5);
             shader.set_shader_value(
                 background_color_loc,
                 [
