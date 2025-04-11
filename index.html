@@ -90,7 +90,14 @@
         .song-description {
             font-size: 1rem;
             color: #cccccc;
-            font-style: italic;
+            hyphens: auto;
+            max-width: 100%;
+            margin: 0 auto;
+            text-align: left;
+            /* apply \n*/
+            white-space: pre-wrap;
+            /* apply \n*/
+            word-break: break-word;
         }
 
         button {
@@ -219,12 +226,12 @@
         <h1>Rust Wasm NBS Player</h1>
         <div class="song-info" id="songInfo">Loading...</div>
         <canvas tabindex="1" id="canvas"></canvas>
-        <div class="song-meta">
-            <div class="song-description" id="songDesc"></div>
-        </div>
         <div class="controls">
             <button id="prevBtn">Previous</button>
             <button id="nextBtn">Next</button>
+        </div>
+        <div class="song-meta">
+            <div class="song-description" id="songDesc"></div>
         </div>
         <div class="playlist" id="playlist"></div>
         <script defer src="./index.js"></script>

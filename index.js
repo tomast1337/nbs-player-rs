@@ -155,21 +155,21 @@ const songs = [
     filename: "360.zip",
     title: "Charli XCX - 360",
     description:
-      "https://noteblock.world/song/0N1vDGTtSF\nCharli XCX - 360 is a song by Charli XCX, an English singer and songwriter. The song features a catchy pop melody and upbeat production.",
+      "Charli XCX - 360 is a song by Charli XCX, an English singer and songwriter. The song features a catchy pop melody and upbeat production.\n\nhttps://noteblock.world/song/0N1vDGTtSF",
     theme: themes.ROSE_SUNSET,
     fontId: 1,
   },
   {
     filename: "bo en - My Time.zip",
     title: "bo en - My Time",
-    description: `Popular song by bo en featured in OMORI.\nhttps://noteblock.world/song/LtZaBBTBfS`,
+    description: `Popular song by bo en featured in OMORI.\n\nhttps://noteblock.world/song/LtZaBBTBfS`,
     theme: themes.COTTON_CANDY,
     fontId: 2,
   },
   {
     filename: "Bad Piggies Theme.nbs",
     title: "Ilmari Hakkola - Bad Piggies Theme",
-    description: `The "Bad Piggies Theme" is the main theme of the 2012 video game Bad Piggies, a spinoff of the Angry Birds series. The game features the Bad Piggies as they attempt to steal the Bird's eggs.\nhttps://noteblock.world/song/0N1vDGTtSF`,
+    description: `The "Bad Piggies Theme" is the main theme of the 2012 video game Bad Piggies, a spinoff of the Angry Birds series. The game features the Bad Piggies as they attempt to steal the Bird's eggs.\n\nhttps://noteblock.world/song/0N1vDGTtSF`,
     theme: themes.LAVA_LAMP,
     fontId: 0,
   },
@@ -199,7 +199,7 @@ const songs = [
     filename: "Ievan Polkka - Hatsune Miku.nbs",
     title: "Ievan Polkka - Hatsune Miku",
     description:
-      "Finnish folk song popularized by Hatsune Miku\nhttps://noteblock.world/song/3t6Sk2kdMA",
+      "Finnish folk song popularized by Hatsune Miku\n\nhttps://noteblock.world/song/3t6Sk2kdMA",
     theme: themes.SAKURA_GARDEN,
     fontId: 1,
   },
