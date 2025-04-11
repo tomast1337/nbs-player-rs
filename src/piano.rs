@@ -212,6 +212,8 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
             theme.white_key_color
         };
 
+        key_color.alpha(1.);
+
         d.draw_texture_pro(
             &key_texture,
             Rectangle::new(
@@ -256,11 +258,13 @@ pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app_state: &AppState) {
             let x = piano_x + (white_idx as f32 + 0.5) * (white_key_width + key_spacing);
             let y = piano_y - 5.0 - key.press_offset;
 
-            let key_color = if key.press_offset != 0.0 && !key.tints.is_empty() {
+            let mut key_color = if key.press_offset != 0.0 && !key.tints.is_empty() {
                 utils::blend_colors(theme.black_key_color, &key.tints)
             } else {
                 theme.black_key_color
             };
+
+            key_color = key_color.alpha(1.);
 
             d.draw_texture_pro(
                 &key_texture,
