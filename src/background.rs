@@ -1,28 +1,3 @@
-/*
-let i_time_loc = shader.get_shader_location("iTime");
-let i_resolution_loc = shader.get_shader_location("iResolution");
-let speed_loc = shader.get_shader_location("speed");
-let background_color_loc = shader.get_shader_location("background_color");
-let accent_color_loc = shader.get_shader_location("accent_color");
-let text_color_loc = shader.get_shader_location("text_color");
-let white_key_color_loc = shader.get_shader_location("white_key_color");
-let black_key_color_loc = shader.get_shader_location("black_key_color");
-let white_text_key_color_loc = shader.get_shader_location("white_text_key_color");
-let black_text_key_color_loc = shader.get_shader_location("black_text_key_color");
-
-let fs_code = include_str!("../assets/shaders/water_background.frag");
-// speed = 5
-
-let fs_code = include_str!("../assets/shaders/plasma_background.frag");
-// speed = 0.012
-
-let fs_code = include_str!("../assets/shaders/fire_background.frag");
-// speed = 1
-
-let fs_code = include_str!("../assets/shaders/plain_background.frag");
-// no speed
-*/
-
 use raylib::prelude::*;
 use serde::{Deserialize, Serialize};
 
