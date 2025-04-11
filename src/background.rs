@@ -6,6 +6,7 @@ use crate::theme::Theme;
 pub enum BackgroundType {
     Plain,
     Water,
+    WaterFall,
     Plasma,
     Fire,
     Grass,
@@ -27,6 +28,7 @@ fn load_background_shader(
     let fs_code = match background {
         BackgroundType::Plain => include_str!("../assets/shaders/plain_background.frag"),
         BackgroundType::Water => include_str!("../assets/shaders/water_background.frag"),
+        BackgroundType::WaterFall => include_str!("../assets/shaders/water_fall_background.frag"),
         BackgroundType::Plasma => include_str!("../assets/shaders/plasma_background.frag"),
         BackgroundType::Fire => include_str!("../assets/shaders/fire_background.frag"),
         BackgroundType::Grass => include_str!("../assets/shaders/grass_background.frag"),
@@ -79,6 +81,7 @@ impl Background {
         let speed = match background {
             BackgroundType::Plain => 0.0,
             BackgroundType::Water => 2.5,
+            BackgroundType::WaterFall => 0.5,
             BackgroundType::Plasma => 0.012,
             BackgroundType::Fire => 1.0,
             BackgroundType::Grass => 0.4,
