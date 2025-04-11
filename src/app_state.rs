@@ -5,6 +5,7 @@ use std::collections::HashMap;
 
 use crate::audio;
 use crate::audio::AudioClip;
+use crate::background::Background;
 use crate::config;
 use crate::font;
 use crate::note;
@@ -128,6 +129,7 @@ pub struct AppState<'a> {
     pub song_state: SongState<'a>,
     pub piano_state: PianoState,
     pub controls_state: ControlsState,
+    background_shader: Background,
 }
 
 impl<'a> AppState<'a> {
@@ -178,6 +180,9 @@ impl<'a> AppState<'a> {
         rl.set_target_fps(config.target_fps.unwrap_or(60));
         rl.gui_enable();
 
+        /* ------------------------Background Shader------------------------ */
+        let background_shader = Background::new(&mut rl, &thread, config.background);
+
         /* ----------------------------Piano State--------------------------- */
         let piano_state = PianoState::new(window_width, &font);
 
@@ -206,6 +211,7 @@ impl<'a> AppState<'a> {
         let controls_state = ControlsState::new(window_height);
 
         let app_state = AppState {
+            background_shader,
             window_width,
             window_height,
             textures,
@@ -269,6 +275,8 @@ impl<'a> AppState<'a> {
         delta_time: f32,
         sounds: &HashMap<u32, AudioClip>,
     ) {
+        self.background_shader.shader_time += delta_time;
+
         if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
             if self.song_state.elapsed_time >= self.song_state.total_duration {
                 self.song_state.elapsed_time = 0.;
@@ -341,7 +349,10 @@ impl<'a> AppState<'a> {
         }
     }
 
-    pub fn draw(&self, d: &mut RaylibDrawHandle<'_>) {
+    pub fn draw(&mut self, d: &mut RaylibDrawHandle<'_>) {
+        // Draw background shader
+        self.background_shader
+            .draw(d, &self.theme, [self.window_width, self.window_height]);
         // Draw notes
         note::draw_notes(d, self);
         // draw piano keys

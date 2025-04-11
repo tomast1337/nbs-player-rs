@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::font::FontID;
+use crate::{background::BackgroundType, font::FontID};
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct ThemeConfig {
@@ -16,6 +16,7 @@ pub struct ThemeConfig {
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct AppConfig {
     pub font_id: FontID,
+    pub background: BackgroundType,
     pub window_width: u32,
     pub window_height: u32,
     pub theme: ThemeConfig,
