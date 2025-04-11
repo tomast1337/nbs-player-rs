@@ -275,7 +275,9 @@ impl<'a> AppState<'a> {
         delta_time: f32,
         sounds: &HashMap<u32, AudioClip>,
     ) {
-        self.background_shader.shader_time += delta_time;
+        if !self.song_state.is_paused {
+            self.background_shader.shader_time += delta_time;
+        }
 
         if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
             if self.song_state.elapsed_time >= self.song_state.total_duration {
