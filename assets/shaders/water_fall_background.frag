@@ -1,5 +1,5 @@
 #define FALLING_SPEED 0.25
-#define STRIPES_FACTOR 25.0
+#define STRIPES_FACTOR 30.0
 
 // Uniforms
 uniform vec2 iResolution;
@@ -49,9 +49,7 @@ void main() {
   vec3 pulseColor = mix(white_text_key_color, black_text_key_color, value);
   col += accent_color * glow * 0.5 + pulseColor * glow * 0.3;
 
-  // Fade vertically with background color
-  float fade = exp(-pow(abs(uv.y - 0.5), 6.0) / pow(2.0 * 0.05, 2.0));
-  col = mix(background_color, col, fade);
+  col = mix(col, background_color, 0.5);
 
   gl_FragColor = vec4(col, 1.0);
 }
