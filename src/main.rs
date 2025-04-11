@@ -75,7 +75,7 @@ fn main() {
     };
 
     // Simple shader implementation
-    let fs_code = include_str!("../assets/shaders/fire_background.frag");
+    let fs_code = include_str!("../assets/shaders/plain_background.frag");
     let fs_code = format!("{}{}", shader_header, fs_code);
 
     let mut shader = rl.load_shader_from_memory(&thread, None, Some(&fs_code));

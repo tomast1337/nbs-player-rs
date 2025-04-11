@@ -173,7 +173,7 @@ impl<'a> AppState<'a> {
 
         let textures = textures::load_textures(&mut rl, &thread);
         let theme = theme::Theme::from_theme_config(&config.theme);
-        let font = font::load_fonts(config.font_id as usize, &mut rl, &thread);
+        let font = font::load_fonts(config.font_id, &mut rl, &thread);
 
         rl.set_target_fps(config.target_fps.unwrap_or(60));
         rl.gui_enable();

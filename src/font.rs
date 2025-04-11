@@ -31,33 +31,30 @@ fn load_from_bytes(
     Ok(font)
 }
 
-pub fn load_fonts(id: usize, rl: &mut RaylibHandle, thread: &RaylibThread) -> Font {
+use serde::{Deserialize, Serialize};
+#[derive(Debug, Deserialize, Serialize, Clone)]
+pub enum FontID {
+    Monocraft,  // Minecraft like
+    JupiterC,   // Doom like
+    PixAntiqua, // Medieval like
+    PixelPlay,  // Fantasy like
+    Romulus,    // Sci-fi like
+    Setbackt,   // Retro like
+}
+
+pub fn load_fonts(id: FontID, rl: &mut RaylibHandle, thread: &RaylibThread) -> Font {
     let monocraft = include_bytes!("../assets/fonts/Monocraft.ttf") as &[u8];
     let jupiterc = include_bytes!("../assets/fonts/jupiterc.ttf") as &[u8];
     let pix_antiqua = include_bytes!("../assets/fonts/PixAntiqua.ttf") as &[u8];
     let pixelplay = include_bytes!("../assets/fonts/pixelplay.ttf") as &[u8];
     let romulus = include_bytes!("../assets/fonts/Romulus.ttf") as &[u8];
     let setbackt = include_bytes!("../assets/fonts/setbackt.ttf") as &[u8];
-    let available_fonts = vec![
-        monocraft,   // Minecraft like
-        jupiterc,    // Doom like
-        pix_antiqua, // Medieval like
-        pixelplay,   // Fantasy like
-        romulus,     // Sci-fi like
-        setbackt,    // Retro like
-    ];
-
-    let font_sizes = vec![64, 64, 64, 64, 64, 64];
-
-    assert!(id < available_fonts.len(), "Font ID out of bounds");
-    assert!(id < font_sizes.len(), "Font size ID out of bounds");
-
-    let font_data = available_fonts[id];
-    let font_size = font_sizes[id];
-
-    let font = load_from_bytes(rl, thread, font_data, font_size).unwrap_or_else(|_| {
-        panic!("Failed to load font from bytes: {}", id);
-    });
-
-    font
+    match id {
+        FontID::Monocraft => load_from_bytes(rl, thread, monocraft, 64).unwrap(),
+        FontID::JupiterC => load_from_bytes(rl, thread, jupiterc, 64).unwrap(),
+        FontID::PixAntiqua => load_from_bytes(rl, thread, pix_antiqua, 64).unwrap(),
+        FontID::PixelPlay => load_from_bytes(rl, thread, pixelplay, 64).unwrap(),
+        FontID::Romulus => load_from_bytes(rl, thread, romulus, 64).unwrap(),
+        FontID::Setbackt => load_from_bytes(rl, thread, setbackt, 64).unwrap(),
+    }
 }
