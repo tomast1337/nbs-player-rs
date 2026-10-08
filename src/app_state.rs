@@ -11,6 +11,7 @@ use crate::font;
 use crate::note;
 use crate::piano;
 use crate::piano::PianoState;
+use crate::profiler;
 use crate::song;
 use crate::textures;
 use crate::theme;
@@ -330,6 +331,7 @@ impl<'a> AppState<'a> {
     }
 
     pub fn update_audio(&mut self, audio_engine: &mut audio::AudioEngine) {
+        let _p = profiler::scope("update_audio");
         // Skip if paused, finished, or already played this tick
         if self.song_state.is_paused
             || self.song_state.elapsed_time >= self.song_state.total_duration
@@ -352,15 +354,28 @@ impl<'a> AppState<'a> {
     }
 
     pub fn draw(&mut self, d: &mut RaylibDrawHandle<'_>) {
+        let _p = profiler::scope("draw");
         // Draw background shader
-        self.background_shader
-            .draw(d, &self.theme, [self.window_width, self.window_height]);
+        {
+            let _p = profiler::scope("background");
+            self.background_shader
+                .draw(d, &self.theme, [self.window_width, self.window_height]);
+        }
         // Draw notes
-        note::draw_notes(d, self);
+        {
+            let _p = profiler::scope("notes");
+            note::draw_notes(d, self);
+        }
         // draw piano keys
-        piano::draw_piano_keys(d, self);
+        {
+            let _p = profiler::scope("piano");
+            piano::draw_piano_keys(d, self);
+        }
         // daw song status
-        self.song_state.draw_song_status(d, self);
+        {
+            let _p = profiler::scope("status");
+            self.song_state.draw_song_status(d, self);
+        }
 
         self.draw_end_message(d);
         // Draw FPS in the top-right corner

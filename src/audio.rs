@@ -1,4 +1,5 @@
 use crate::note::NoteBlock;
+use crate::profiler;
 use raylib::{ffi::PlaySound, prelude::*};
 use std::collections::{HashMap, VecDeque};
 
@@ -81,6 +82,7 @@ impl<'a> AudioEngine<'a> {
 
     /// Fast approximation for 2^x
     pub fn play_tick(&mut self, notes: &[NoteBlock]) {
+        let _p = profiler::scope("play_tick");
         for note in notes {
             let sound_id = note.instrument;
             let frequency_ratio = note.frequency_ratio;
@@ -108,14 +110,20 @@ impl<'a> AudioEngine<'a> {
                 // Free the old sound
 
                 // Create new sound from the wave data
-                self.raylib_audio
-                    .new_sound_from_wave(&sound_data.wave)
-                    .expect("Failed to create sound")
+                {
+                    let _p = profiler::scope("new_sound_from_wave");
+                    self.raylib_audio
+                        .new_sound_from_wave(&sound_data.wave)
+                        .expect("Failed to create sound")
+                }
             } else {
                 // Pool has space, create new sound
-                self.raylib_audio
-                    .new_sound_from_wave(&sound_data.wave)
-                    .expect("Failed to create sound")
+                {
+                    let _p = profiler::scope("new_sound_from_wave");
+                    self.raylib_audio
+                        .new_sound_from_wave(&sound_data.wave)
+                        .expect("Failed to create sound")
+                }
             };
 
             // Configure the sound

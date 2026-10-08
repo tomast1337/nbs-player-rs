@@ -10,6 +10,7 @@ mod config;
 mod font;
 mod note;
 mod piano;
+mod profiler;
 mod song;
 mod textures;
 mod theme;
@@ -67,16 +68,45 @@ fn main() {
     app_state.song_state.note_blocks =
         note::get_note_blocks(&app_state.song_state.nbs_file, &audio_engine.sounds);
 
+    // NBS_PROFILE_FRAMES=N: profile N frames from the start, print report, exit.
+    let bench_frames: Option<u32> = env::var("NBS_PROFILE_FRAMES")
+        .ok()
+        .and_then(|v| v.parse().ok());
+    if bench_frames.is_some() {
+        profiler::toggle();
+        app_state.song_state.is_paused = false;
+    }
+    let mut frame_count = 0u32;
+
     while !rl.window_should_close() {
-        app_state.toggle_fullscreen(&mut rl);
-        app_state.update_window_dimensions(&mut rl);
-        let delta_time = rl.get_frame_time();
-        app_state.update(&mut rl, delta_time, &audio_engine.sounds);
+        if let Some(n) = bench_frames {
+            if frame_count >= n {
+                profiler::end_frame();
+                profiler::log_report();
+                profiler::dump_folded();
+                break;
+            }
+            frame_count += 1;
+        }
+        profiler::end_frame();
+        profiler::handle_input(&rl);
+        {
+            let _p = profiler::scope("update");
+            app_state.toggle_fullscreen(&mut rl);
+            app_state.update_window_dimensions(&mut rl);
+            let delta_time = rl.get_frame_time();
+            app_state.update(&mut rl, delta_time, &audio_engine.sounds);
+        }
         app_state.update_audio(&mut audio_engine);
 
         let mut d = rl.begin_drawing(&thread);
 
         app_state.draw(&mut d);
-        app_state.update_and_draw_gui(&mut d, &raylib_audio);
+        {
+            let _p = profiler::scope("gui");
+            app_state.update_and_draw_gui(&mut d, &raylib_audio);
+        }
+        let frame_time = d.get_frame_time();
+        profiler::draw_overlay(&mut d, app_state.window_width, frame_time);
     }
 }

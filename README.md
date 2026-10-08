@@ -82,6 +82,10 @@ The program will always look for a file called `song.nbsx` in the current workin
 
 You can change the arguments as you like.
 
+## Profiler
+
+Built-in scoped stack profiler (`src/profiler.rs`). In-app: **F3** toggles the overlay (avg / peak ms, call count per nested scope), **F4** writes `profile.folded`. Render a flamegraph with `cargo install inferno` then `inferno-flamegraph < profile.folded > flame.svg`. Add scopes with `let _p = profiler::scope("name");`.
+
 # License
 
 This project is licensed under the GNU Affero General Public License v3.0. See the [LICENSE](LICENSE) file for details.
