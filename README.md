@@ -82,9 +82,25 @@ The program will always look for a file called `song.nbsx` in the current workin
 
 You can change the arguments as you like.
 
+## Project layout
+
+Cargo workspace; the player is split so rendering and audio can be swapped independently.
+
+- `crates/nbs-player-core`: everything that is not a window, a GPU or an audio device. Song loading, playback state (`Player`), piano/note/controls layout (produces sprites as plain `Rect`/`Rgba` values), the profiler, and the audio side: `AudioBackend` trait, Ogg decoding, and a software `Mixer`. Compiles for wasm and has unit tests (`cargo test -p nbs-player-core`).
+- `src/` (the app): raylib window, GUI and shaders, plus audio backends implementing `AudioBackend` (`src/audio/`).
+
+### Audio backends
+
+Pick one with `"audio_backend"` in the JSON config:
+
+- `"Raylib"` (default): one raylib `Sound` per note, as before.
+- `"Cpal"`: the core software mixer behind a cpal output stream. Notes are just voice-start events, so triggering a tick is ~100x cheaper than the raylib path. Not available on the emscripten target (cpal has no emscripten host); it falls back to raylib there.
+
+Render a song to a WAV without any device: `cargo run --release -p nbs-player-core --example render_wav -- song.nbs out.wav [seconds]`.
+
 ## Profiler
 
-Built-in scoped stack profiler (`src/profiler.rs`). In-app: **F3** toggles the overlay (avg / peak ms, call count per nested scope), **F4** writes `profile.folded`. Render a flamegraph with `cargo install inferno` then `inferno-flamegraph < profile.folded > flame.svg`. Add scopes with `let _p = profiler::scope("name");`.
+Built-in scoped stack profiler (`crates/nbs-player-core/src/profiler.rs`, overlay in `src/profiler_overlay.rs`). In-app: **F3** toggles the overlay (avg / peak ms, call count per nested scope), **F4** writes `profile.folded`. Render a flamegraph with `cargo install inferno` then `inferno-flamegraph < profile.folded > flame.svg`. Add scopes with `let _p = profiler::scope("name");`. Headless: `NBS_PROFILE_FRAMES=900 cargo run --release -- '<json>'` profiles that many frames, logs the report and exits.
 
 # License
 

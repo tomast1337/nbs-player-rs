@@ -31,16 +31,7 @@ fn load_from_bytes(
     Ok(font)
 }
 
-use serde::{Deserialize, Serialize};
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum FontID {
-    Monocraft,  // Minecraft like
-    JupiterC,   // Doom like
-    PixAntiqua, // Medieval like
-    PixelPlay,  // Fantasy like
-    Romulus,    // Sci-fi like
-    Setbackt,   // Retro like
-}
+use nbs_player_core::config::FontID;
 
 pub fn load_fonts(id: FontID, rl: &mut RaylibHandle, thread: &RaylibThread) -> Font {
     let monocraft = include_bytes!("../assets/fonts/Monocraft.ttf") as &[u8];

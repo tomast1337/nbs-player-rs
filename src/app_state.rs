@@ -1,148 +1,56 @@
 extern crate raylib;
-use nbs_rs::NbsFile;
+use nbs_player_core::audio::AudioBackend;
+use nbs_player_core::config::AppConfig;
+use nbs_player_core::controls::ControlsState;
+use nbs_player_core::notes::{self, NoteBlock};
+use nbs_player_core::piano::PianoState;
+use nbs_player_core::player::Player;
+use nbs_player_core::profiler;
+use nbs_player_core::theme::Theme;
+use nbs_player_core::utils;
 use raylib::prelude::*;
-use std::collections::HashMap;
 
-use crate::audio;
-use crate::audio::AudioClip;
 use crate::background::Background;
-use crate::config;
 use crate::font;
-use crate::note;
-use crate::piano;
-use crate::piano::PianoState;
-use crate::profiler;
-use crate::song;
+use crate::render::{self, RlText, color, from_vec2, rect, tex_src};
 use crate::textures;
-use crate::theme;
-use crate::utils;
-
-#[derive(Debug, Clone)]
-pub struct SongState<'a> {
-    pub note_blocks: Vec<Vec<note::NoteBlock>>, // Note blocks for each tick
-    pub current_tick: f32,                      // Current tick of the song
-    pub elapsed_time: f32,                      // Elapsed time since the song started
-    pub note_dim: f32,                          // Dimension of the note blocks
-    pub font_size_3: f32,                       // Font size for the note blocks with sharp notes
-    pub font_size_2: f32,                       // Font size for the note blocks with flat notes
-    pub key_spacing: f32,                       // Spacing between keys
-    pub played_ticks: Vec<bool>,                // Vector to track played ticks
-    pub instrument_colors: HashMap<u32, Color>, // Map of instrument colors
-    pub is_paused: bool,                        // Flag to check if the song is paused
-    pub nbs_file: &'a NbsFile,                  // Reference to the NBS file
-    pub extra_sounds: Vec<(&'a [u8], f64)>,     // Extra sounds to be played
-    pub title: String,                          // Title of the song
-    pub notes_per_second: f32,                  // Notes per second based on the tempo
-    pub total_duration: f32,                    // Total duration of the song
-    pub is_end: bool,                           // Flag to check if the song has ended
-}
-
-impl SongState<'_> {
-    fn draw_song_status(&self, d: &mut RaylibDrawHandle<'_>, app_state: &AppState) -> f32 {
-        // Define text positions
-        let start_x = 10.0;
-        let start_y = 10.0;
-
-        // Define text color
-        let text_color = app_state.theme.text_color;
-        let font = &app_state.font;
-        let font_size = app_state.font_size;
-        let title = &self.title;
-
-        // Draw song status
-        d.draw_text_pro(
-            font,
-            title,
-            Vector2::new(start_x, start_y),
-            Vector2::new(0.0, 0.0),
-            0.0,
-            font_size as f32,
-            0.,
-            text_color,
-        );
-        font_size
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ControlsState {
-    pub controls_close_time: f32, // Time in seconds to wait before closing controls
-    pub sec_since_last_mouse_move: f32, // Timer for mouse inactivity
-    pub last_mouse_pos: Vector2,  // Last recorded mouse position
-    pub controls_panel_y: f32,    // Initial position of the controls panel (hidden)
-    pub button_size: Vector2,     // Size of volume buttons
-    pub control_panel_height: f32, // Height of the control panel
-    pub timeline_height: f32,     // Height of the timeline slider
-    pub toggle_fullscreen: bool,  // Fullscreen state
-}
-
-impl ControlsState {
-    fn new(window_height: f32) -> Self {
-        const BTN_S: f32 = 40.; // Size of the buttons
-        let button_size = Vector2::new(BTN_S, BTN_S);
-        let control_panel_height = button_size.y * 2.0;
-        ControlsState {
-            controls_close_time: 0.5, // Time in seconds to wait before closing controls
-            sec_since_last_mouse_move: 0.0, // Timer for mouse inactivity
-            last_mouse_pos: Vector2::zero(), // Last recorded mouse position
-            button_size: button_size.clone(), // Size of buttons
-            control_panel_height,     // Height of the control panel
-            timeline_height: button_size.y, // Height of the timeline slider
-            toggle_fullscreen: false, // Fullscreen call state
-            controls_panel_y: window_height - control_panel_height, // Initial position of the controls panel (hidden)
-        }
-    }
-    fn update_mouse_state(&mut self, current_mouse_pos: Vector2, delta_time: f32) {
-        if current_mouse_pos.x != self.last_mouse_pos.x
-            || current_mouse_pos.y != self.last_mouse_pos.y
-        {
-            self.sec_since_last_mouse_move = 0.0; // Reset the inactivity timer
-            self.last_mouse_pos = current_mouse_pos; // Update the last mouse position
-        } else {
-            self.sec_since_last_mouse_move += delta_time; // Increment the inactivity timer
-        }
-    }
-
-    fn update_controls_panel_position(&mut self, window_height: f32) {
-        if self.sec_since_last_mouse_move < self.controls_close_time {
-            // Slide the panel up (show)
-            self.controls_panel_y = utils::lerp(
-                self.controls_panel_y,
-                window_height - self.control_panel_height,
-                0.2,
-            );
-        } else {
-            // Slide the panel down (hide)
-            self.controls_panel_y = utils::lerp(self.controls_panel_y, window_height, 0.2);
-        }
-    }
-}
+use crate::theme as gui_theme;
 
 #[derive(Debug)]
-pub struct AppState<'a> {
+pub struct AppState {
     pub window_width: f32,
     pub window_height: f32,
     pub textures: textures::Textures,
-    pub theme: theme::Theme,
+    pub theme: Theme,
     pub font: Font,
     pub font_size: f32,
     pub volume: f32,
-    pub song_state: SongState<'a>,
+    pub player: Player,
     pub piano_state: PianoState,
     pub controls_state: ControlsState,
+    // Note block geometry, derived from the piano layout.
+    pub note_dim: f32,
+    pub key_spacing: f32,
+    pub font_size_3: f32,
+    pub font_size_2: f32,
     background_shader: Background,
 }
 
-impl<'a> AppState<'a> {
+/// UI font size for a given window width.
+fn ui_font_size(window_width: f32) -> f32 {
+    (window_width / 64.0).clamp(18., 40.)
+}
+
+impl AppState {
     pub fn setup_application(
-        config: config::AppConfig,
-        nbs_data: &'a song::SongData<'a>,
-    ) -> (AppState<'a>, RaylibHandle, RaylibThread) {
+        config: AppConfig,
+        song: &nbs_rs::NbsFile,
+        note_blocks: Vec<Vec<NoteBlock>>,
+    ) -> (AppState, RaylibHandle, RaylibThread) {
         let window_width = config.window_width as f32;
         let window_height = config.window_height as f32;
 
-        // Check if width and height are within a reasonable range
-        if config.window_width <= 0 || config.window_height <= 0 {
+        if config.window_width == 0 || config.window_height == 0 {
             log::error!("Error: Window dimensions must be greater than 0");
             std::process::exit(1);
         }
@@ -151,65 +59,40 @@ impl<'a> AppState<'a> {
             std::process::exit(1);
         }
 
-        let nbs_file = &nbs_data.song;
-        let extra_sounds = &nbs_data.extra_sounds;
+        let song_name = String::from_utf8(song.header.song_name.clone())
+            .unwrap_or_else(|_| "Unknown".to_string());
+        let song_author = String::from_utf8(song.header.song_author.clone())
+            .unwrap_or_else(|_| "Unknown".to_string());
+        let title = format!("{} - {}", song_name, song_author);
 
-        let song_name: String = match String::from_utf8(nbs_file.header.song_name.clone()) {
-            Ok(name) => name,
-            Err(_err) => "Unknown".to_string(),
-        };
-        let song_author: String = match String::from_utf8(nbs_file.header.song_author.clone()) {
-            Ok(author) => author,
-            Err(_err) => "Unknown".to_string(),
-        };
-        let title: String = format!("{} - {}", song_name, song_author);
-
-        let notes_per_second: f32 = nbs_file.header.tempo as f32 / 100.;
-        let total_duration: f32 = nbs_file.header.song_length as f32 / notes_per_second;
+        let player = Player::new(
+            title.clone(),
+            song.header.tempo,
+            song.header.song_length as usize,
+            note_blocks,
+            notes::generate_instrument_palette(),
+        );
 
         /* ------------------------------Raylib------------------------------ */
-
         let (mut rl, thread) = raylib::init()
             .size(window_width as i32, window_height as i32)
             .title(&title)
             .build();
 
         let textures = textures::load_textures(&mut rl, &thread);
-        let theme = theme::Theme::from_theme_config(&config.theme);
+        let theme = Theme::from_theme_config(&config.theme);
         let font = font::load_fonts(config.font_id, &mut rl, &thread);
 
         rl.set_target_fps(config.target_fps.unwrap_or(60));
         rl.gui_enable();
 
-        /* ------------------------Background Shader------------------------ */
         let background_shader = Background::new(&mut rl, &thread, config.background);
 
-        /* ----------------------------Piano State--------------------------- */
-        let piano_state = PianoState::new(window_width, &font);
-
-        /* ----------------------------Note State---------------------------- */
+        /* ------------------------------Layout------------------------------ */
+        let piano_state = PianoState::new(window_width, &RlText(&font));
         let note_dim = piano_state.piano_props.white_key_width;
-        let (font_size_3, font_size_2) = note::calculate_note_block_font_sizes(note_dim, &font);
-        let song_state = SongState {
-            note_blocks: Vec::new(),
-            current_tick: 0.,
-            elapsed_time: 0.,
-            note_dim,
-            font_size_3,
-            font_size_2,
-            key_spacing: piano_state.piano_props.key_spacing,
-            played_ticks: vec![false; nbs_file.header.song_length as usize],
-            instrument_colors: note::generate_instrument_palette(),
-            is_paused: true,
-            nbs_file,
-            extra_sounds: extra_sounds.to_vec(),
-            title,
-            notes_per_second,
-            total_duration,
-            is_end: false,
-        };
-        /* --------------------------Controls State-------------------------- */
-        let controls_state = ControlsState::new(window_height);
+        let (font_size_3, font_size_2) =
+            notes::calculate_note_block_font_sizes(note_dim, &RlText(&font));
 
         let app_state = AppState {
             background_shader,
@@ -218,49 +101,40 @@ impl<'a> AppState<'a> {
             textures,
             theme,
             font,
-            font_size: 0.0,
+            font_size: ui_font_size(window_width),
             volume: config.initial_volume.unwrap_or(0.5),
-            song_state,
+            player,
+            key_spacing: piano_state.piano_props.key_spacing,
             piano_state,
-            controls_state,
+            controls_state: ControlsState::new(window_height),
+            note_dim,
+            font_size_3,
+            font_size_2,
         };
 
-        rl.gui_set_font(&app_state.font); // Set the font for the GUI
-        app_state.theme.set_gui_style(&mut rl); // Apply the theme to the GUI
-        return (app_state, rl, thread);
+        rl.gui_set_font(&app_state.font);
+        gui_theme::set_gui_style(&app_state.theme, &mut rl);
+        (app_state, rl, thread)
     }
 
     pub fn update_window_dimensions(&mut self, rl: &mut RaylibHandle) {
         let new_width = rl.get_screen_width() as f32;
         let new_height = rl.get_screen_height() as f32;
-        let window_width = self.window_width;
-        let window_height = self.window_height;
-        let song_state = &mut self.song_state;
-        let font = &self.font;
 
-        if window_width != new_width {
+        if self.window_width != new_width {
             self.window_width = new_width;
-            self.piano_state.piano_props = piano::initialize_piano_dimensions(
-                self.window_width,
-                &self.piano_state.all_keys,
-                &self.font,
-            );
-            song_state.note_dim = self.piano_state.piano_props.white_key_width;
-            song_state.key_spacing = self.piano_state.piano_props.key_spacing;
-
-            let min_font_size = 18.;
-            let max_font_size = 40.;
-            self.font_size = (self.window_width / 64.0).clamp(min_font_size, max_font_size as f32);
+            let measure = RlText(&self.font);
+            self.piano_state.resize(new_width, &measure);
+            self.note_dim = self.piano_state.piano_props.white_key_width;
+            self.key_spacing = self.piano_state.piano_props.key_spacing;
+            self.font_size = ui_font_size(new_width);
 
             let (font_size_3, font_size_2) =
-                note::calculate_note_block_font_sizes(song_state.note_dim, &font);
-
-            song_state.font_size_3 = font_size_3;
-            song_state.font_size_2 = font_size_2;
+                notes::calculate_note_block_font_sizes(self.note_dim, &measure);
+            self.font_size_3 = font_size_3;
+            self.font_size_2 = font_size_2;
         }
-        if window_height != new_height {
-            self.window_height = new_height;
-        }
+        self.window_height = new_height;
     }
 
     pub fn toggle_fullscreen(&mut self, rl: &mut RaylibHandle) {
@@ -270,427 +144,239 @@ impl<'a> AppState<'a> {
         }
     }
 
-    pub fn update(
-        &mut self,
-        rl: &mut RaylibHandle,
-        delta_time: f32,
-        sounds: &HashMap<u32, AudioClip>,
-    ) {
-        if !self.song_state.is_paused {
+    pub fn update(&mut self, rl: &mut RaylibHandle, delta_time: f32) {
+        if !self.player.is_paused {
             self.background_shader.shader_time += delta_time;
         }
 
-        if rl.is_key_pressed(raylib::consts::KeyboardKey::KEY_SPACE) {
-            if self.song_state.elapsed_time >= self.song_state.total_duration {
-                self.song_state.elapsed_time = 0.;
-                self.song_state.played_ticks =
-                    vec![false; self.song_state.nbs_file.header.song_length as usize];
-                self.song_state.note_blocks =
-                    note::get_note_blocks(&self.song_state.nbs_file, &sounds);
-                self.song_state.is_paused = false;
-            }
-            self.song_state.is_paused = !self.song_state.is_paused;
+        if rl.is_key_pressed(KeyboardKey::KEY_SPACE) {
+            self.player.space_pressed();
         }
+        self.player.update(delta_time);
 
-        // Update elapsed time if not paused ad song is not finished
-        if !self.song_state.is_paused
-            && self.song_state.elapsed_time < self.song_state.total_duration
-        {
-            self.song_state.elapsed_time += delta_time;
-        }
+        let mouse = from_vec2(rl.get_mouse_position());
+        self.controls_state.update_mouse_state(mouse, delta_time);
 
-        // Check if the mouse has moved
-        let current_mouse_pos = rl.get_mouse_position();
-        self.controls_state
-            .update_mouse_state(current_mouse_pos, delta_time);
-
-        self.song_state.current_tick =
-            self.song_state.elapsed_time * self.song_state.notes_per_second;
-
-        // Reset all key press states
+        // Reset all key press states, then press the keys under the playhead.
         self.piano_state.reset_keys();
-
-        // Trigger piano key presses for current and trigger audio
-        if let Some(notes) = self
-            .song_state
-            .note_blocks
-            .get_mut(self.song_state.current_tick as usize)
-        {
+        if let Some(notes) = self.player.notes_at_playhead() {
             self.piano_state
-                .trigger_key_press(notes, &self.song_state.instrument_colors);
+                .trigger_key_press(notes, &self.player.instrument_colors);
         }
 
-        // Update the controls panel position based on mouse activity
         self.controls_state
             .update_controls_panel_position(self.window_height);
-
-        self.piano_state.update_key_animation(delta_time); // Update key animations
-
-        // is end of song
-        self.song_state.is_end = self.song_state.elapsed_time >= self.song_state.total_duration;
+        self.piano_state.update_key_animation(delta_time);
     }
 
-    pub fn update_audio(&mut self, audio_engine: &mut audio::AudioEngine) {
+    pub fn update_audio(&mut self, audio: &mut dyn AudioBackend) {
         let _p = profiler::scope("update_audio");
-        // Skip if paused, finished, or already played this tick
-        if self.song_state.is_paused
-            || self.song_state.elapsed_time >= self.song_state.total_duration
-            || self.song_state.played_ticks[self.song_state.current_tick as usize]
-        {
-            return;
-        }
-
-        // Check if there are notes to play for the current tick
-        if let Some(notes) = self
-            .song_state
-            .note_blocks
-            .get(self.song_state.current_tick as usize)
-        {
-            audio_engine.play_tick(notes);
-
-            // Mark this tick as played
-            self.song_state.played_ticks[self.song_state.current_tick as usize] = true;
+        if let Some(notes) = self.player.take_due_notes() {
+            audio.play_tick(notes);
         }
     }
 
     pub fn draw(&mut self, d: &mut RaylibDrawHandle<'_>) {
         let _p = profiler::scope("draw");
-        // Draw background shader
         {
             let _p = profiler::scope("background");
             self.background_shader
                 .draw(d, &self.theme, [self.window_width, self.window_height]);
         }
-        // Draw notes
         {
             let _p = profiler::scope("notes");
-            note::draw_notes(d, self);
+            render::draw_notes(d, self);
         }
-        // draw piano keys
         {
             let _p = profiler::scope("piano");
-            piano::draw_piano_keys(d, self);
+            render::draw_piano_keys(d, self);
         }
-        // daw song status
         {
             let _p = profiler::scope("status");
-            self.song_state.draw_song_status(d, self);
+            self.draw_song_status(d);
         }
 
         self.draw_end_message(d);
-        // Draw FPS in the top-right corner
         d.draw_fps(self.window_width as i32 - 100, 10);
     }
 
-    fn draw_end_message(&self, d: &mut RaylibDrawHandle<'_>) {
-        if !self.song_state.is_end {
-            return;
-        }
-        let window_width = self.window_width;
-        let window_height = self.window_height;
-        let theme = &self.theme;
-        let font = &self.font;
-        let font_size = self.font_size;
-        let title = &self.song_state.title;
-        let measure = font.measure_text(title, font_size, 0.0);
+    fn draw_song_status(&self, d: &mut RaylibDrawHandle<'_>) {
         d.draw_text_pro(
-            font,
-            title,
-            Vector2::new(window_width / 2. - measure.x / 2., window_height / 2. - 50.),
-            Vector2::new(0.0, 0.0),
+            &self.font,
+            &self.player.title,
+            Vector2::new(10.0, 10.0),
+            Vector2::zero(),
             0.0,
-            font_size,
+            self.font_size,
             0.,
-            theme.accent_color,
-        );
-        let measure = font
-            .measure_text("Press Space to Restart", font_size, 0.0)
-            .x;
-        d.draw_text_pro(
-            font,
-            "Press Space to Restart",
-            Vector2::new(window_width / 2. - measure / 2., window_height / 2. + 10.),
-            Vector2::new(0.0, 0.0),
-            0.0,
-            font_size,
-            0.,
-            theme.accent_color,
+            color(self.theme.text_color),
         );
     }
 
+    fn draw_end_message(&self, d: &mut RaylibDrawHandle<'_>) {
+        if !self.player.is_end {
+            return;
+        }
+        let (w, h) = (self.window_width, self.window_height);
+        let accent = color(self.theme.accent_color);
+        let mut line = |text: &str, dy: f32| {
+            let measure = self.font.measure_text(text, self.font_size, 0.0).x;
+            d.draw_text_pro(
+                &self.font,
+                text,
+                Vector2::new(w / 2. - measure / 2., h / 2. + dy),
+                Vector2::zero(),
+                0.0,
+                self.font_size,
+                0.,
+                accent,
+            );
+        };
+        line(&self.player.title, -50.);
+        line("Press Space to Restart", 10.);
+    }
+
+    /// Draws the control panel with raygui and applies what the user clicked.
     pub fn update_and_draw_gui(
         &mut self,
         d: &mut RaylibDrawHandle<'_>,
-        raylib_audio: &RaylibAudio,
+        audio: &mut dyn AudioBackend,
     ) {
-        let controls_panel_y = self.controls_state.controls_panel_y;
-        let control_panel_height = self.controls_state.control_panel_height;
-        let window_width = self.window_width;
-        let window_height = self.window_height;
-        let font = &self.font;
-        let font_size = self.font_size;
-        let button_size = self.controls_state.button_size;
-        let timeline_height = self.controls_state.timeline_height;
-        let total_duration = self.song_state.total_duration;
-        let elapsed_time = self.song_state.elapsed_time;
-        let last_mouse_pos = self.controls_state.last_mouse_pos;
-        let control_panel_rect =
-            Rectangle::new(0.0, controls_panel_y, window_width, control_panel_height);
-        /* ------------------------ GUI elements Rect ----------------------- */
-        let play_pause_button_rect = Rectangle::new(
-            button_size.x / 2.,
-            controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
-            button_size.x,
-            button_size.y,
-        );
-        let reset_button_rect = Rectangle::new(
-            button_size.x + button_size.x / 2. + 10.0,
-            controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
-            button_size.x,
-            button_size.y,
-        );
+        let layout = self
+            .controls_state
+            .layout(self.window_width, self.window_height);
+        self.controls_state.hold_open_if_hovered(layout.panel);
 
-        let timeline_rect = Rectangle::new(
-            reset_button_rect.x + reset_button_rect.width + 10.0,
-            controls_panel_y + control_panel_height / 2.0 - timeline_height / 2.0,
-            window_width - reset_button_rect.width - button_size.x * 5.5 - 30.0,
-            timeline_height,
-        );
-
-        let current_time_text = format!(
-            "{} / {}",
-            utils::time_formatter(elapsed_time),
-            utils::time_formatter(total_duration)
-        );
-
-        // Measure the size of the text
-        let time_line_text_size = font.measure_text(&current_time_text, font_size, 0.);
-
-        // Calculate the position to center the text on the timeline
-        let text_x = timeline_rect.x + 10.;
-        let text_y = timeline_rect.y + (timeline_rect.height / 2.0) - (time_line_text_size.y / 2.0);
-
-        let volume_rect = Rectangle::new(
-            timeline_rect.x + timeline_rect.width + 10.0,
-            controls_panel_y + control_panel_height / 2.0 - button_size.y / 2.0,
-            button_size.x * 2.0,
-            button_size.y,
-        );
-
-        let fullscreen_button_rect = Rectangle::new(
-            volume_rect.x + volume_rect.width + 10.0,
-            volume_rect.y,
-            button_size.x,
-            button_size.y,
-        );
-
-        // while the cursor is in the control panel, do not move the panel down
-        if control_panel_rect
-            .check_collision_point_rec(Vector2::new(last_mouse_pos.x, last_mouse_pos.y))
-        {
-            self.controls_state.sec_since_last_mouse_move = 0.0;
-        }
-        /*----------------------------- Draw Gui -----------------------------*/
-        let is_paused = self.song_state.is_paused;
         let textures = &self.textures;
-        let theme = &self.theme;
-        let nbs_file = &self.song_state.nbs_file;
-        let notes_per_second = self.song_state.notes_per_second;
-        let font = &self.font;
-        let font_size = self.font_size;
-        let current_tick = self.song_state.current_tick;
+        let accent = color(self.theme.accent_color);
+        let is_paused = self.player.is_paused;
+        let button_size = self.controls_state.button_size;
+
+        let time_text = format!(
+            "{} / {}",
+            utils::time_formatter(self.player.elapsed_time),
+            utils::time_formatter(self.player.total_duration)
+        );
+        let time_size = self.font.measure_text(&time_text, self.font_size, 0.);
+        let time_pos = Vector2::new(
+            layout.timeline.x + 10.,
+            layout.timeline.y + layout.timeline.h / 2.0 - time_size.y / 2.0,
+        );
+
+        let draw_icon = |d: &mut RaylibDrawHandle<'_>, tex: &Texture2D, dst: Rectangle, tint: Color| {
+            d.draw_texture_pro(tex, tex_src(tex), dst, Vector2::zero(), 0.0, tint);
+        };
+
+        let play_pause_clicked;
+        let reset_clicked;
+        let mut center_play_clicked = false;
+        let fullscreen_clicked;
+        let mut seek_to: Option<f32> = None;
+        let volume_changed;
+
+        // raygui draws and polls in one call; the empty label must not allocate per frame.
+        let empty = c"".as_ptr();
         unsafe {
-            d.draw_rectangle_rec(control_panel_rect, Color::BLACK.alpha(0.7));
+            d.draw_rectangle_rec(rect(layout.panel), Color::BLACK.alpha(0.7));
 
-            // Draw the play/pause button
-
-            let is_play_pause_click = ffi::GuiButton(
-                play_pause_button_rect.into(),
-                utils::string_to_c_char("".to_string()),
-            );
-
-            d.draw_texture_pro(
+            // Play/pause
+            play_pause_clicked = ffi::GuiButton(rect(layout.play_pause).into(), empty) == 1;
+            draw_icon(
+                d,
                 if is_paused {
                     &textures.play_button
                 } else {
                     &textures.pause_button
                 },
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.play_button.width as f32,
-                    textures.play_button.height as f32,
-                ),
-                play_pause_button_rect,
-                Vector2::new(0.0, 0.0),
-                0.0,
-                theme.accent_color,
+                rect(layout.play_pause),
+                accent,
             );
 
-            // Draw the reset button
-            let is_reset_click = ffi::GuiButton(
-                reset_button_rect.into(),
-                utils::string_to_c_char("".to_string()),
-            );
+            // Reset
+            reset_clicked = ffi::GuiButton(rect(layout.reset).into(), empty) == 1;
+            draw_icon(d, &textures.reset_button, rect(layout.reset), accent);
 
-            d.draw_texture_pro(
-                &textures.reset_button,
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.reset_button.width as f32,
-                    textures.reset_button.height as f32,
-                ),
-                reset_button_rect,
-                Vector2::new(0.0, 0.0),
-                0.0,
-                theme.accent_color,
-            );
-
-            // Draw the timeline slider
-            let mut new_tick = current_tick;
-            let is_timeline_slider_adjusted = ffi::GuiSlider(
-                timeline_rect.into(),
-                utils::string_to_c_char("".to_string()),
-                utils::string_to_c_char("".to_string()),
+            // Timeline
+            let mut new_tick = self.player.current_tick;
+            if ffi::GuiSlider(
+                rect(layout.timeline).into(),
+                empty,
+                empty,
                 &mut new_tick,
                 0.0,
-                nbs_file.header.song_length as f32,
+                self.player.song_length as f32,
+            ) == 1
+            {
+                seek_to = Some(new_tick);
+            }
+            d.draw_text_pro(
+                &self.font,
+                &time_text,
+                time_pos,
+                Vector2::zero(),
+                0.0,
+                self.font_size,
+                0.,
+                accent,
             );
 
-            // Draw the text centered on the timeline
-            d.draw_text_pro(
-                &font,
-                &current_time_text,
-                Vector2::new(text_x, text_y),
-                Vector2::new(0.0, 0.0),
-                0.0,
-                font_size,
-                0.,
-                theme.accent_color,
-            );
-            // Draw the volume controls
-            let is_volume_adjusted = ffi::GuiSliderBar(
-                volume_rect.into(),
-                utils::string_to_c_char("".to_string()),
-                utils::string_to_c_char("".to_string()),
+            // Volume
+            volume_changed = ffi::GuiSliderBar(
+                rect(layout.volume).into(),
+                empty,
+                empty,
                 &mut self.volume,
                 0.0,
                 1.0,
-            );
-
-            let volume = self.volume;
-            let volume_texture = if volume == 0.0 {
-                &textures.vol_000
-            } else if volume <= 0.25 {
-                &textures.vol_025
-            } else if volume <= 0.5 {
-                &textures.vol_050
-            } else if volume <= 0.75 {
-                &textures.vol_075
-            } else {
-                &textures.vol_100
+            ) == 1;
+            let volume_texture = match self.volume {
+                v if v == 0.0 => &textures.vol_000,
+                v if v <= 0.25 => &textures.vol_025,
+                v if v <= 0.5 => &textures.vol_050,
+                v if v <= 0.75 => &textures.vol_075,
+                _ => &textures.vol_100,
             };
-            d.draw_texture_pro(
+            draw_icon(
+                d,
                 volume_texture,
                 Rectangle::new(
-                    0.0,
-                    0.0,
-                    volume_texture.width as f32,
-                    volume_texture.height as f32,
-                ),
-                Rectangle::new(
-                    volume_rect.x + button_size.x / 2.,
-                    volume_rect.y,
+                    layout.volume.x + button_size.x / 2.,
+                    layout.volume.y,
                     button_size.x,
                     button_size.y,
                 ),
-                Vector2::new(0.0, 0.0),
-                0.0,
-                theme.accent_color.alpha(0.5),
+                accent.alpha(0.5),
             );
 
-            // Draw the fullscreen button
-            let is_fullscreen_click = ffi::GuiButton(
-                fullscreen_button_rect.into(),
-                utils::string_to_c_char("".to_string()),
-            );
+            // Fullscreen
+            fullscreen_clicked = ffi::GuiButton(rect(layout.fullscreen).into(), empty) == 1;
 
+            // Big play button while paused
             if is_paused {
-                // daw a button on the middle of the screen to unpause
-                let foo = Rectangle::new(
-                    window_width / 2. - 50.,
-                    window_height / 2. - 50.,
-                    100.,
-                    100.,
-                );
-
-                let is_button_clicked =
-                    ffi::GuiButton(foo.into(), utils::string_to_c_char("".to_string()));
-
-                d.draw_texture_pro(
-                    &textures.play_button,
-                    Rectangle::new(
-                        0.0,
-                        0.0,
-                        textures.play_button.width as f32,
-                        textures.play_button.height as f32,
-                    ),
-                    foo,
-                    Vector2::new(0.0, 0.0),
-                    0.0,
-                    theme.accent_color,
-                );
-
-                if is_button_clicked == 1 {
-                    self.song_state.is_paused = false;
-                }
+                center_play_clicked = ffi::GuiButton(rect(layout.center_play).into(), empty) == 1;
+                draw_icon(d, &textures.play_button, rect(layout.center_play), accent);
             }
 
-            d.draw_texture_pro(
-                &textures.fullscreen_button,
-                Rectangle::new(
-                    0.0,
-                    0.0,
-                    textures.fullscreen_button.width as f32,
-                    textures.fullscreen_button.height as f32,
-                ),
-                fullscreen_button_rect,
-                Vector2::new(0.0, 0.0),
-                0.0,
-                theme.accent_color,
-            );
+            draw_icon(d, &textures.fullscreen_button, rect(layout.fullscreen), accent);
+        }
 
-            if is_play_pause_click == 1 {
-                self.song_state.is_paused = !self.song_state.is_paused;
-            }
-
-            if is_reset_click == 1 {
-                self.song_state.elapsed_time = 0.;
-                self.song_state.played_ticks = vec![false; nbs_file.header.song_length as usize];
-                self.song_state.is_paused = true;
-            }
-
-            if is_timeline_slider_adjusted == 1 {
-                // set all played ticks to false beyond the current tick and all ticks before as played
-                self.song_state.current_tick = new_tick;
-                for i in 0..nbs_file.header.song_length as usize {
-                    if i < current_tick as usize {
-                        self.song_state.played_ticks[i] = true;
-                    } else {
-                        self.song_state.played_ticks[i] = false;
-                    }
-                }
-                self.song_state.elapsed_time = new_tick / notes_per_second;
-            }
-
-            if is_volume_adjusted == 1 {
-                raylib_audio.set_master_volume(volume);
-            }
-
-            if is_fullscreen_click == 1 {
-                self.controls_state.toggle_fullscreen = !self.controls_state.toggle_fullscreen;
-            }
+        if center_play_clicked {
+            self.player.play();
+        }
+        if play_pause_clicked {
+            self.player.toggle_pause();
+        }
+        if reset_clicked {
+            self.player.reset();
+        }
+        if let Some(tick) = seek_to {
+            self.player.seek_to_tick(tick);
+        }
+        if volume_changed {
+            audio.set_master_volume(self.volume);
+        }
+        if fullscreen_clicked {
+            self.controls_state.toggle_fullscreen = !self.controls_state.toggle_fullscreen;
         }
     }
 }

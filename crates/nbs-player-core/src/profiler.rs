@@ -5,11 +5,10 @@
 //! let _p = profiler::scope("update");   // times until end of block
 //! ```
 //! Scopes nest; each unique call path (`frame;draw;notes`) gets its own stats.
-//! Call `end_frame()` once per frame, `draw_overlay()` to show the tree, and
+//! Call `end_frame()` once per frame, show `rows()` however the frontend likes, and use
 //! `dump_folded()` to write `profile.folded` (feed to `inferno-flamegraph`).
 //! While disabled a scope costs one thread-local bool read.
 
-use raylib::prelude::*;
 use std::{cell::RefCell, collections::HashMap, time::Instant};
 
 const EMA_ALPHA: f32 = 0.1;
@@ -172,17 +171,6 @@ pub fn log_report() {
     });
 }
 
-/// F3 toggles profiling + overlay, F4 writes the folded-stack file.
-pub fn handle_input(rl: &RaylibHandle) {
-    if rl.is_key_pressed(KeyboardKey::KEY_F3) {
-        toggle();
-        log::info!("profiler {}", if is_enabled() { "on" } else { "off" });
-    }
-    if rl.is_key_pressed(KeyboardKey::KEY_F4) {
-        dump_folded();
-    }
-}
-
 /// Write `a;b;c <self-microseconds>` lines. Render with
 /// `inferno-flamegraph < profile.folded > flame.svg`.
 pub fn dump_folded() {
@@ -207,75 +195,39 @@ pub fn dump_folded() {
     }
 }
 
-/// Draw the call tree (avg / peak ms, calls, bar) at the top-right.
-pub fn draw_overlay(d: &mut RaylibDrawHandle<'_>, window_width: f32, frame_time: f32) {
-    const ROW_H: i32 = 14;
-    const PANEL_W: i32 = 360;
-    const BAR_W: f32 = 70.0;
-    // Bars are scaled so a full bar is one 60 fps frame budget.
-    const BUDGET_MS: f32 = 16.67;
+/// One line of the call tree, in pre-order (children directly under their parent).
+#[derive(Debug, Clone)]
+pub struct Row {
+    pub depth: usize,
+    pub name: &'static str,
+    pub avg_ms: f32,
+    pub peak_ms: f32,
+    pub calls: u32,
+}
 
+/// Snapshot of the smoothed call tree. Empty while the profiler is disabled.
+pub fn rows() -> Vec<Row> {
     PROFILER.with(|p| {
         let p = p.borrow();
         if !p.enabled {
-            return;
+            return Vec::new();
         }
-
-        // Pre-order walk: children listed under their parent, in first-seen order.
-        let mut order: Vec<usize> = Vec::with_capacity(p.stats.len());
-        fn walk(stats: &[Stat], parent: Option<usize>, out: &mut Vec<usize>) {
+        fn walk(stats: &[Stat], parent: Option<usize>, out: &mut Vec<Row>) {
             for (i, s) in stats.iter().enumerate() {
                 if s.parent == parent {
-                    out.push(i);
+                    out.push(Row {
+                        depth: s.depth,
+                        name: s.name,
+                        avg_ms: s.avg_ms,
+                        peak_ms: s.peak_ms,
+                        calls: s.calls,
+                    });
                     walk(stats, Some(i), out);
                 }
             }
         }
-        walk(&p.stats, None, &mut order);
-
-        let x = window_width as i32 - PANEL_W - 10;
-        let y = 30;
-        let h = (order.len() as i32 + 2) * ROW_H + 8;
-        d.draw_rectangle(x - 4, y - 4, PANEL_W + 8, h, Color::new(0, 0, 0, 170));
-        d.draw_text(
-            &format!(
-                "frame {:.2} ms  ({:.0} fps)   F3 off  F4 dump",
-                frame_time * 1000.0,
-                1.0 / frame_time.max(1e-6)
-            ),
-            x,
-            y,
-            10,
-            Color::WHITE,
-        );
-
-        for (row, &i) in order.iter().enumerate() {
-            let s = &p.stats[i];
-            let ry = y + (row as i32 + 1) * ROW_H + 4;
-            let label = format!("{}{}", "  ".repeat(s.depth), s.name);
-            d.draw_text(&label, x, ry, 10, Color::LIGHTGRAY);
-            d.draw_text(
-                &format!("{:6.3} / {:6.3}ms x{}", s.avg_ms, s.peak_ms, s.calls),
-                x + 130,
-                ry,
-                10,
-                Color::WHITE,
-            );
-            let frac = (s.avg_ms / BUDGET_MS).clamp(0.0, 1.0);
-            let color = if frac > 0.5 {
-                Color::RED
-            } else if frac > 0.2 {
-                Color::ORANGE
-            } else {
-                Color::LIME
-            };
-            d.draw_rectangle(
-                x + PANEL_W - BAR_W as i32,
-                ry + 1,
-                (BAR_W * frac).max(1.0) as i32,
-                8,
-                color,
-            );
-        }
-    });
+        let mut out = Vec::with_capacity(p.stats.len());
+        walk(&p.stats, None, &mut out);
+        out
+    })
 }
