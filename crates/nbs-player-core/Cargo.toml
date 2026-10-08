@@ -1,0 +1,13 @@
+[package]
+name = "nbs-player-core"
+version = "0.1.0"
+edition = "2024"
+description = "Renderer- and audio-agnostic core of the NBS player"
+license = "AGPL-3.0 license"
+
+[dependencies]
+nbs-rs = { git = "https://github.com/tomast1337/nbs-rs.git" }
+log = "0.4.26"
+zip = { version = "2.5.0", default-features = false, features = ["deflate"] }
+serde = { version = "1.0.219", features = ["derive"] }
+lewton = "0.10"

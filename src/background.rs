@@ -1,18 +1,6 @@
 use raylib::prelude::*;
-use serde::{Deserialize, Serialize};
-
-use crate::theme::Theme;
-#[derive(Debug, Deserialize, Serialize, Clone)]
-pub enum BackgroundType {
-    Plain,
-    Water,
-    WaterFall,
-    Plasma,
-    Fire,
-    Grass,
-    Sand,
-    Voronoise,
-}
+use nbs_player_core::config::BackgroundType;
+use nbs_player_core::theme::Theme;
 fn load_background_shader(
     rl: &mut raylib::core::RaylibHandle,
     thread: &raylib::core::RaylibThread,
@@ -117,62 +105,13 @@ impl Background {
         shader.set_shader_value(self.i_time_loc, self.shader_time);
         shader.set_shader_value(self.i_resolution_loc, resolution);
         shader.set_shader_value(self.speed_loc, self.speed);
-        shader.set_shader_value(
-            self.background_color_loc,
-            [
-                theme.background_color.r as f32 / 255.0,
-                theme.background_color.g as f32 / 255.0,
-                theme.background_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.accent_color_loc,
-            [
-                theme.accent_color.r as f32 / 255.0,
-                theme.accent_color.g as f32 / 255.0,
-                theme.accent_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.text_color_loc,
-            [
-                theme.text_color.r as f32 / 255.0,
-                theme.text_color.g as f32 / 255.0,
-                theme.text_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.white_key_color_loc,
-            [
-                theme.white_key_color.r as f32 / 255.0,
-                theme.white_key_color.g as f32 / 255.0,
-                theme.white_key_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.black_key_color_loc,
-            [
-                theme.black_key_color.r as f32 / 255.0,
-                theme.black_key_color.g as f32 / 255.0,
-                theme.black_key_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.white_text_key_color_loc,
-            [
-                theme.white_text_key_color.r as f32 / 255.0,
-                theme.white_text_key_color.g as f32 / 255.0,
-                theme.white_text_key_color.b as f32 / 255.0,
-            ],
-        );
-        shader.set_shader_value(
-            self.black_text_key_color_loc,
-            [
-                theme.black_text_key_color.r as f32 / 255.0,
-                theme.black_text_key_color.g as f32 / 255.0,
-                theme.black_text_key_color.b as f32 / 255.0,
-            ],
-        );
+        shader.set_shader_value(self.background_color_loc, theme.background_color.to_f32_rgb());
+        shader.set_shader_value(self.accent_color_loc, theme.accent_color.to_f32_rgb());
+        shader.set_shader_value(self.text_color_loc, theme.text_color.to_f32_rgb());
+        shader.set_shader_value(self.white_key_color_loc, theme.white_key_color.to_f32_rgb());
+        shader.set_shader_value(self.black_key_color_loc, theme.black_key_color.to_f32_rgb());
+        shader.set_shader_value(self.white_text_key_color_loc, theme.white_text_key_color.to_f32_rgb());
+        shader.set_shader_value(self.black_text_key_color_loc, theme.black_text_key_color.to_f32_rgb());
 
         let mut shader_mode_handle = d.begin_shader_mode(&mut shader);
         shader_mode_handle.draw_rectangle(
