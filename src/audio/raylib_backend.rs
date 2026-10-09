@@ -58,8 +58,8 @@ impl<'a> AudioBackend for RaylibBackend<'a> {
             }
         };
 
-        // raylib pans 0..1 around 0.5; the historical mapping fed it pan/2.
-        sound.set_pan(note.pan * 0.5);
+        // raylib pans 0..1 around 0.5 and 0.0 is full right; core pan is -1 (left)..1 (right).
+        sound.set_pan(0.5 - note.pan * 0.5);
         sound.set_volume(note.volume);
         sound.set_pitch(note.frequency_ratio);
         unsafe {

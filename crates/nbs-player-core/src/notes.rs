@@ -49,7 +49,7 @@ pub fn get_note_blocks(
             key: note.key,
             frequency_ratio: utils::fast_pow2((key + (pitch / 100.0) - tone as f32) * INV_12),
             volume: note.velocity as f32 / 100.0,
-            pan: (note.panning as f32 / 100.0).clamp(-1.0, 1.0),
+            pan: pan_from_nbs(note.panning),
         });
     }
 
@@ -59,6 +59,13 @@ pub fn get_note_blocks(
         log::info!("Loaded note blocks");
     }
     note_blocks
+}
+
+/// NBS stores stereo position as 0..=200 (0 = two blocks right, 100 = center, 200 = two
+/// blocks left); the parser hands it over as an `i8`, so reinterpret it as unsigned first.
+/// Returns -1.0 (left) ..= 1.0 (right), 0.0 at center.
+pub fn pan_from_nbs(panning: i8) -> f32 {
+    ((100.0 - panning as u8 as f32) / 100.0).clamp(-1.0, 1.0)
 }
 
 /// Instrument id -> note color. The first 16 are the classic NBS colors, the rest are
@@ -248,4 +255,18 @@ pub fn calculate_note_block_font_sizes(note_dim: f32, measure: &dyn TextMeasure)
         calculate_font_size(note_dim, measure, 3),
         calculate_font_size(note_dim, measure, 4),
     )
+}
+
+#[cfg(test)]
+mod pan_tests {
+    use super::pan_from_nbs;
+
+    #[test]
+    fn nbs_panning_maps_to_signed_pan() {
+        assert_eq!(pan_from_nbs(100), 0.0);
+        assert_eq!(pan_from_nbs(0), 1.0); // right
+        assert_eq!(pan_from_nbs(50), 0.5);
+        assert_eq!(pan_from_nbs(150u8 as i8), -0.5); // values above 127 wrap in the i8
+        assert_eq!(pan_from_nbs(200u8 as i8), -1.0); // left
+    }
 }
