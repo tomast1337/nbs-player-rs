@@ -12,3 +12,7 @@ log = "0.4.26"
 # cpal 0.18 dropped its emscripten host; this crate is empty there.
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 cpal = "0.18"
+
+# In the browser cpal drives a Web Audio context through wasm-bindgen.
+[target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
+cpal = { version = "0.18", features = ["wasm-bindgen"] }

@@ -1,7 +1,9 @@
 //! Background shaders. The shared GLSL sources use loose `uniform` declarations and
-//! `gl_FragColor`; wgpu (naga) wants Vulkan-style GLSL, so wrap them: replace the uniforms
-//! with one block, redirect `gl_FragColor`, and flip `gl_FragCoord` to a bottom-left origin
-//! so the effects look the same as in the GL frontends.
+//! `gl_FragColor`, so [`fragment_glsl`] wraps them for naga (one uniform block, redirected
+//! `gl_FragColor`, `gl_FragCoord` flipped to a bottom-left origin so the effects look the
+//! same as in the GL frontends). The `convert_shaders` example turns that into the WGSL
+//! committed under `assets/shaders/wgsl/`, which is what the renderer loads: naga's GLSL
+//! front end does not build for wasm.
 
 use nbs_player_core::config::BackgroundType;
 use nbs_player_core::theme::Theme;
@@ -49,6 +51,24 @@ const COLOR_NAMES: [&str; 7] = [
     "white_text_key_color",
     "black_text_key_color",
 ];
+
+/// Generated WGSL fragment shader for `background` (see `examples/convert_shaders.rs`).
+pub fn wgsl(background: &BackgroundType) -> &'static str {
+    match background {
+        BackgroundType::Plain => include_str!("../../../assets/shaders/wgsl/plain_background.wgsl"),
+        BackgroundType::Water => include_str!("../../../assets/shaders/wgsl/water_background.wgsl"),
+        BackgroundType::WaterFall => {
+            include_str!("../../../assets/shaders/wgsl/water_fall_background.wgsl")
+        }
+        BackgroundType::Plasma => include_str!("../../../assets/shaders/wgsl/plasma_background.wgsl"),
+        BackgroundType::Fire => include_str!("../../../assets/shaders/wgsl/fire_background.wgsl"),
+        BackgroundType::Grass => include_str!("../../../assets/shaders/wgsl/grass_background.wgsl"),
+        BackgroundType::Sand => include_str!("../../../assets/shaders/wgsl/sand_background.wgsl"),
+        BackgroundType::Voronoise => {
+            include_str!("../../../assets/shaders/wgsl/voronoise_background.wgsl")
+        }
+    }
+}
 
 /// Vulkan-flavoured GLSL 4.50 fragment shader for `background`.
 pub fn fragment_glsl(background: &BackgroundType) -> String {

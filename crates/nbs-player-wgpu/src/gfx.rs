@@ -34,7 +34,8 @@ struct Batch {
 pub struct Gfx {
     pub device: wgpu::Device,
     pub queue: wgpu::Queue,
-    pub format: wgpu::TextureFormat,
+    #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
+    format: wgpu::TextureFormat,
 
     quad_pipeline: wgpu::RenderPipeline,
     bg_pipeline: wgpu::RenderPipeline,
@@ -286,11 +287,7 @@ impl Gfx {
 
         let glsl = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("background"),
-            source: wgpu::ShaderSource::Glsl {
-                shader: Cow::Owned(background::fragment_glsl(background_kind)),
-                stage: wgpu::naga::ShaderStage::Fragment,
-                defines: &[],
-            },
+            source: wgpu::ShaderSource::Wgsl(Cow::Borrowed(background::wgsl(background_kind))),
         });
         let bg_pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("background"),
@@ -489,6 +486,7 @@ impl Gfx {
     }
 
     /// Render the current frame offscreen and return RGBA8 pixels (for screenshots).
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn capture(&mut self) -> Vec<u8> {
         let (w, h) = self.size_px;
         let tex = self.device.create_texture(&wgpu::TextureDescriptor {
