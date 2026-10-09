@@ -17,9 +17,10 @@ if [ -z "$cli" ] || [ "$("$cli" --version | awk '{print $2}')" != "$want" ]; the
     exit 1
 fi
 
-cargo build --release --target wasm32-unknown-unknown -p nbs-player-wgpu --lib
-"$cli" --target web --no-typescript --out-dir web/pkg \
-    "$root/target/wasm32-unknown-unknown/release/nbs_player_wgpu.wasm"
+# the `web` profile (workspace Cargo.toml) optimizes for size: ~6.2 MB -> ~3.6 MB
+cargo build --profile web --target wasm32-unknown-unknown -p nbs-player-wgpu --lib
+"$cli" --target web --no-typescript --remove-name-section --remove-producers-section \
+    --out-dir web/pkg "$root/target/wasm32-unknown-unknown/web/nbs_player_wgpu.wasm"
 
 if [ "${1:-}" = "serve" ]; then
     cd web && python3 -m http.server 8080
