@@ -476,6 +476,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "console_error_panic_hook"
+version = "0.1.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a06aeb73f470f66dcdbf7223caeebb85984942f22f1adb2a088cf9668146bbbc"
+dependencies = [
+ "cfg-if",
+ "wasm-bindgen",
+]
+
+[[package]]
+name = "console_log"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "86919cef3e37b9356ccf54d4421208c17ecfda01beae61393e7ffd72916c0ef1"
+dependencies = [
+ "log",
+ "web-sys",
+]
+
+[[package]]
 name = "core-foundation"
 version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -548,6 +568,8 @@ dependencies = [
  "block2 0.6.2",
  "coreaudio-rs",
  "dasp_sample",
+ "futures-channel",
+ "futures-util",
  "jni",
  "js-sys",
  "libc",
@@ -563,6 +585,8 @@ dependencies = [
  "objc2-core-audio-types",
  "objc2-core-foundation",
  "objc2-foundation 0.3.2",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
  "web-sys",
  "windows",
  "windows-core",
@@ -1798,14 +1822,22 @@ name = "nbs-player-wgpu"
 version = "0.1.0"
 dependencies = [
  "bytemuck",
+ "console_error_panic_hook",
+ "console_log",
  "fontdue",
  "image 0.25.10",
+ "js-sys",
  "log",
+ "naga",
  "nbs-player-core",
  "nbs-player-cpal",
  "pollster",
  "serde_json",
  "simple_logger",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
  "wgpu",
  "winit",
 ]
@@ -3852,6 +3884,7 @@ dependencies = [
  "thiserror 2.0.21",
  "wgpu-core-deps-apple",
  "wgpu-core-deps-emscripten",
+ "wgpu-core-deps-wasm",
  "wgpu-core-deps-windows-linux-android",
  "wgpu-hal",
  "wgpu-naga-bridge",
@@ -3872,6 +3905,15 @@ name = "wgpu-core-deps-emscripten"
 version = "30.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d98b86cf4abf524a902dd35f18ca6a3f08fc2ae9847c8f10b48e30491b1f0b86"
+dependencies = [
+ "wgpu-hal",
+]
+
+[[package]]
+name = "wgpu-core-deps-wasm"
+version = "30.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d260ca2ca8adc654f513a869bf3cac0b47f5b8d3f87803d6942015f8de597aae"
 dependencies = [
  "wgpu-hal",
 ]

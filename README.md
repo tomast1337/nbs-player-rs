@@ -21,7 +21,7 @@ A web version is available at <https://tomast1337.github.io/nbs-player-rs>, it a
 
 # Run development environment
 
-Serve the web page (both frontends) with `bun scripts/serve.ts [port]`; build the wasm first (below, plus `crates/nbs-player-macroquad/build-web.sh` for macroquad).
+Serve the web page (all frontends) with `bun scripts/serve.ts [port]`; build the wasm first (below, plus `crates/nbs-player-macroquad/build-web.sh` for macroquad and `crates/nbs-player-wgpu/build-web.sh` for wgpu).
 
 ## Compile and Running for WebAssembly
 
@@ -92,7 +92,7 @@ Cargo workspace; the player is split so rendering and audio can be swapped indep
 - `src/` (the raylib frontend): implements the core's `Renderer` (`src/render.rs`, plus fonts, textures and GLSL shaders), reads `InputState` from raylib, and provides audio backends (`src/audio/`).
 
 - `crates/nbs-player-macroquad`: second frontend. Same core, drawn with macroquad; builds for native and `wasm32-unknown-unknown`. `cargo run -p nbs-player-macroquad -- [json-config] [song-path]`. Web: `crates/nbs-player-macroquad/build-web.sh serve` builds the wasm into `web/` and serves it on :8080 (drop a `song.nbsx` next to `index.html` to play your own song, edit `config.json` for the theme). Web audio is the core mixer pulled by a small Web Audio plugin (`web/nbs_audio.js`), not cpal: cpal's wasm host needs wasm-bindgen, which does not coexist with macroquad's loader.
-- `crates/nbs-player-wgpu`: third frontend, wgpu + winit (Vulkan/Metal/DX12). `cargo run -p nbs-player-wgpu -- [json-config] [song-path]`. Rects, sprites and glyphs (fontdue atlas) are batched into one textured-quad pipeline; the background shaders are the same GLSL files, wrapped for naga. Native only for now; audio is cpal.
+- `crates/nbs-player-wgpu`: third frontend, wgpu + winit (Vulkan/Metal/DX12). `cargo run -p nbs-player-wgpu -- [json-config] [song-path]`. Rects, sprites and glyphs (fontdue atlas) are batched into one textured-quad pipeline; the background shaders are the shared GLSL files converted to WGSL by naga (`cargo run -p nbs-player-wgpu --example convert_shaders`; output committed in `assets/shaders/wgsl/`, a test fails when it goes stale). Audio is cpal. Web: `crates/nbs-player-wgpu/build-web.sh [serve]` builds a wasm-bindgen module into `web/pkg` (needs a `wasm-bindgen` CLI equal to the crate version in `Cargo.lock`; the script prints the install command). WebGPU is used when the browser has it, WebGL2 otherwise. Audio starts on the first click or key, as browsers require.
 - `crates/nbs-player-cpal`: cpal output for the core mixer, shared by frontends.
 
 To add another frontend (wgpu, macroquad, canvas...), implement `render::Renderer` (7 draw calls and text measuring), fill `render::InputState` each frame, and pick an `AudioBackend`.

@@ -1,0 +1,15 @@
+{
+  "font_id": "PixelPlay",
+  "background": "Plain",
+  "window_width": 1280,
+  "window_height": 720,
+  "theme": {
+    "background_color": "#FFE4E1",
+    "accent_color": "#D4A59A",
+    "text_color": "#5D4037",
+    "white_key_color": "#FFF0F5",
+    "black_key_color": "#E6C7C2",
+    "white_text_key_color": "#5D4037",
+    "black_text_key_color": "#D4A59A"
+  }
+}

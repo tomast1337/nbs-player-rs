@@ -1,5 +1,7 @@
+// Padded to 16 bytes: WebGL2 needs uniform bindings sized in multiples of 16.
 struct Screen {
     size: vec2<f32>,
+    _pad: vec2<f32>,
 };
 @group(0) @binding(0) var<uniform> screen: Screen;
 @group(1) @binding(0) var tex: texture_2d<f32>;
