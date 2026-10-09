@@ -29,3 +29,13 @@ pub trait AudioBackend {
     /// Master volume 0..=1.
     fn set_master_volume(&mut self, volume: f32);
 }
+
+/// Discards everything. For headless runs and platforms without audio output yet.
+#[derive(Debug, Default)]
+pub struct NullBackend;
+
+impl AudioBackend for NullBackend {
+    fn load_instrument(&mut self, _: &Instrument) {}
+    fn play(&mut self, _: &NoteBlock) {}
+    fn set_master_volume(&mut self, _: f32) {}
+}

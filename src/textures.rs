@@ -1,3 +1,4 @@
+use nbs_player_core::render::Sprite;
 use raylib::prelude::*;
 
 #[derive(Debug)]
@@ -14,107 +15,26 @@ pub struct Textures {
     pub vol_075: Texture2D,
     pub vol_100: Texture2D,
 }
-#[inline]
-fn load_from_mem(
-    rl: &mut raylib::RaylibHandle,
-    thread: &raylib::RaylibThread,
-    data: &[u8],
-    file_type: &str,
-) -> Texture2D {
-    let image = raylib::texture::Image::load_image_from_mem(file_type, data).unwrap();
+
+fn load(rl: &mut RaylibHandle, thread: &RaylibThread, sprite: Sprite) -> Texture2D {
+    let image = Image::load_image_from_mem(".png", sprite.png_bytes()).unwrap();
     let texture = rl.load_texture_from_image(thread, &image).unwrap();
-    texture.set_texture_filter(thread, raylib::consts::TextureFilter::TEXTURE_FILTER_POINT);
+    texture.set_texture_filter(thread, TextureFilter::TEXTURE_FILTER_POINT);
     texture
 }
 
-pub fn load_textures(rl: &mut raylib::RaylibHandle, thread: &raylib::RaylibThread) -> Textures {
-    let piano_key_texture = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/key_grey.png"),
-        ".png",
-    );
-    let note_texture = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/note_block.png"),
-        ".png",
-    );
-
-    let play_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/play.png"),
-        ".png",
-    );
-
-    let pause_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/pause.png"),
-        ".png",
-    );
-
-    let reset_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/reset.png"),
-        ".png",
-    );
-
-    let fullscreen_button = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/fullscreen.png"),
-        ".png",
-    );
-
-    let vol_000 = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/vol000.png"),
-        ".png",
-    );
-
-    let vol_025 = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/vol025.png"),
-        ".png",
-    );
-
-    let vol_050 = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/vol050.png"),
-        ".png",
-    );
-
-    let vol_075 = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/vol075.png"),
-        ".png",
-    );
-
-    let vol_100 = load_from_mem(
-        rl,
-        thread,
-        include_bytes!("../assets/textures/vol100.png"),
-        ".png",
-    );
-
+pub fn load_textures(rl: &mut RaylibHandle, thread: &RaylibThread) -> Textures {
     Textures {
-        note_texture,
-        piano_key_texture,
-        play_button,
-        pause_button,
-        reset_button,
-        fullscreen_button,
-        vol_000,
-        vol_025,
-        vol_050,
-        vol_075,
-        vol_100,
+        note_texture: load(rl, thread, Sprite::Note),
+        piano_key_texture: load(rl, thread, Sprite::PianoKey),
+        play_button: load(rl, thread, Sprite::Play),
+        pause_button: load(rl, thread, Sprite::Pause),
+        reset_button: load(rl, thread, Sprite::Reset),
+        fullscreen_button: load(rl, thread, Sprite::Fullscreen),
+        vol_000: load(rl, thread, Sprite::Volume0),
+        vol_025: load(rl, thread, Sprite::Volume25),
+        vol_050: load(rl, thread, Sprite::Volume50),
+        vol_075: load(rl, thread, Sprite::Volume75),
+        vol_100: load(rl, thread, Sprite::Volume100),
     }
 }

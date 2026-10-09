@@ -3,9 +3,6 @@
 
 mod raylib_backend;
 
-#[cfg(not(target_os = "emscripten"))]
-mod cpal_backend;
-
 use nbs_player_core::audio::{AudioBackend, InstrumentBank};
 use nbs_player_core::config::AudioBackendKind;
 use raylib::prelude::RaylibAudio;
@@ -39,7 +36,7 @@ pub fn create_backend<'a>(
 
 #[cfg(not(target_os = "emscripten"))]
 fn create_cpal<'a>() -> Option<Box<dyn AudioBackend + 'a>> {
-    match cpal_backend::CpalBackend::new() {
+    match nbs_player_cpal::CpalBackend::new() {
         Ok(b) => Some(Box::new(b)),
         Err(e) => {
             log::error!("cpal init failed: {e}");

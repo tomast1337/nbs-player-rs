@@ -11,3 +11,6 @@ log = "0.4.26"
 zip = { version = "2.5.0", default-features = false, features = ["deflate"] }
 serde = { version = "1.0.219", features = ["derive"] }
 lewton = "0.10"
+
+[dev-dependencies]
+serde_json = "1"

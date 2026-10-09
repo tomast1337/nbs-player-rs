@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/nbs-player-core"]
+members = ["crates/nbs-player-core", "crates/nbs-player-cpal", "crates/nbs-player-macroquad"]
 
 [package]
 name = "nbs-player-rs"
@@ -28,6 +28,6 @@ rand = "0.9.0"
 #[lib]
 #crate-type = ["cdylib", "rlib"]
 
-# cpal has no emscripten host; the raylib audio backend is used there.
+# cpal 0.18 has no emscripten host; the raylib audio backend is used there.
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
-cpal = "0.18"
+nbs-player-cpal = { path = "crates/nbs-player-cpal" }

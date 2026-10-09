@@ -89,6 +89,9 @@ Cargo workspace; the player is split so rendering and audio can be swapped indep
 - `crates/nbs-player-core`: everything that is not a window, a GPU or an audio device. It holds the whole player (`app::App`): song loading, playback (`Player`), piano/note/controls layout, an immediate-mode UI (`ui`), the profiler and its overlay, and the audio side (`AudioBackend` trait, Ogg decoding, a software `Mixer`). A frame is `app.frame(input, dt, size, &mut renderer, &mut audio)`. Compiles for wasm and is unit-tested headless (`cargo test -p nbs-player-core`).
 - `src/` (the raylib frontend): implements the core's `Renderer` (`src/render.rs`, plus fonts, textures and GLSL shaders), reads `InputState` from raylib, and provides audio backends (`src/audio/`).
 
+- `crates/nbs-player-macroquad`: second frontend. Same core, drawn with macroquad; builds for native and `wasm32-unknown-unknown`. `cargo run -p nbs-player-macroquad -- [json-config] [song-path]`. Web: `crates/nbs-player-macroquad/build-web.sh serve` builds the wasm into `web/` and serves it on :8080 (drop a `song.nbsx` next to `index.html` to play your own song, edit `config.json` for the theme). Web audio is the core mixer pulled by a small Web Audio plugin (`web/nbs_audio.js`), not cpal: cpal's wasm host needs wasm-bindgen, which does not coexist with macroquad's loader.
+- `crates/nbs-player-cpal`: cpal output for the core mixer, shared by frontends.
+
 To add another frontend (wgpu, macroquad, canvas...), implement `render::Renderer` (7 draw calls and text measuring), fill `render::InputState` each frame, and pick an `AudioBackend`.
 
 ### Audio backends

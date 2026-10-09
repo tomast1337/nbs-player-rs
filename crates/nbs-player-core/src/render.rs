@@ -19,6 +19,40 @@ pub enum Sprite {
     Volume100,
 }
 
+impl Sprite {
+    /// Every sprite, for frontends that load them all up front.
+    pub const ALL: [Sprite; 11] = [
+        Sprite::Note,
+        Sprite::PianoKey,
+        Sprite::Play,
+        Sprite::Pause,
+        Sprite::Reset,
+        Sprite::Fullscreen,
+        Sprite::Volume0,
+        Sprite::Volume25,
+        Sprite::Volume50,
+        Sprite::Volume75,
+        Sprite::Volume100,
+    ];
+
+    /// The bundled PNG data for this sprite.
+    pub fn png_bytes(self) -> &'static [u8] {
+        match self {
+            Sprite::Note => include_bytes!("../../../assets/textures/note_block.png"),
+            Sprite::PianoKey => include_bytes!("../../../assets/textures/key_grey.png"),
+            Sprite::Play => include_bytes!("../../../assets/textures/play.png"),
+            Sprite::Pause => include_bytes!("../../../assets/textures/pause.png"),
+            Sprite::Reset => include_bytes!("../../../assets/textures/reset.png"),
+            Sprite::Fullscreen => include_bytes!("../../../assets/textures/fullscreen.png"),
+            Sprite::Volume0 => include_bytes!("../../../assets/textures/vol000.png"),
+            Sprite::Volume25 => include_bytes!("../../../assets/textures/vol025.png"),
+            Sprite::Volume50 => include_bytes!("../../../assets/textures/vol050.png"),
+            Sprite::Volume75 => include_bytes!("../../../assets/textures/vol075.png"),
+            Sprite::Volume100 => include_bytes!("../../../assets/textures/vol100.png"),
+        }
+    }
+}
+
 /// Immediate-mode 2D drawing target for one frame. Coordinates are window pixels with
 /// the origin at the top-left. Text measurement comes from [`TextMeasure`].
 pub trait Renderer: TextMeasure {
