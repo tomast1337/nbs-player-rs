@@ -40,11 +40,12 @@ jobs:
         run: cargo build --release --target wasm32-unknown-unknown -p nbs-player-macroquad
 
       # the wasm-bindgen CLI must match the crate version in Cargo.lock
-      - name: Build wgpu frontend
+      - name: Build wgpu and canvas frontends
         run: |
           version=$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/[version = "]/,""); print; exit}' Cargo.lock)
           cargo install wasm-bindgen-cli --version "$version" --root target/tools --locked
           crates/nbs-player-wgpu/build-web.sh
+          crates/nbs-player-canvas/build-web.sh
 
       - name: Package site
         run: scripts/package-web.sh

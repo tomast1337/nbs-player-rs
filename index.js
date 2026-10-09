@@ -1,10 +1,11 @@
 // Which frontend runs in the page: "raylib" (emscripten build, raylib audio) or
-// "macroquad" or "wgpu" (wasm32-unknown-unknown builds, core mixer through Web Audio).
+// "macroquad", "wgpu" or "canvas" (wasm32-unknown-unknown builds, core mixer through Web Audio).
 // Chosen with ?renderer=macroquad and remembered in localStorage.
 const RENDERERS = {
   raylib: { label: "Raylib (emscripten) + raylib audio" },
   macroquad: { label: "Macroquad (wasm) + core mixer / Web Audio" },
   wgpu: { label: "wgpu + winit (wasm) + cpal" },
+  canvas: { label: "Canvas 2D (wasm) + cpal" },
 };
 let renderer = new URLSearchParams(location.search).get("renderer");
 if (!(renderer in RENDERERS)) {
@@ -390,6 +391,20 @@ function startMacroquad() {
     });
 }
 
+// The canvas build is a wasm-bindgen module like wgpu; same arguments.
+async function startCanvas() {
+  updateUI();
+  playerCanvas.id = "canvas2d";
+  try {
+    const web = "./crates/nbs-player-canvas/web/pkg/nbs_player_canvas.js";
+    const { default: init, start } = await import(web);
+    await init();
+    await start("canvas2d", JSON.stringify(appArgs), songUrl());
+  } catch (e) {
+    songInfoElement.textContent = `Failed to start canvas build: ${e.message ?? e}`;
+  }
+}
+
 // The wgpu build is a wasm-bindgen module; it gets the theme and song URL directly.
 async function startWgpu() {
   updateUI();
@@ -418,6 +433,8 @@ if (renderer === "macroquad") {
   startMacroquad();
 } else if (renderer === "wgpu") {
   startWgpu();
+} else if (renderer === "canvas") {
+  startCanvas();
 } else {
   startRaylib();
 }
