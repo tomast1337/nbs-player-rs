@@ -1,20 +1,23 @@
 extern crate raylib;
+use nbs_player_core::app::App;
 use nbs_player_core::audio::InstrumentBank;
 use nbs_player_core::config::AppConfig;
+use nbs_player_core::player::Player;
+use nbs_player_core::theme::Theme;
+use nbs_player_core::types::Vec2;
 use nbs_player_core::{notes, profiler, song};
 use raylib::prelude::*;
 use simple_logger::SimpleLogger;
 use std::env;
 
-mod app_state;
 mod audio;
 mod background;
 mod font;
-mod profiler_overlay;
 mod render;
 mod textures;
-mod theme;
 mod utils;
+
+use render::{RaylibRenderer, Resources};
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -38,6 +41,11 @@ fn main() {
         std::process::exit(1);
     }
 
+    if config.window_width < 200 || config.window_height < 200 {
+        log::error!("Error: Window dimensions are too small (minimum 200x200)");
+        std::process::exit(1);
+    }
+
     let data = match utils::load_file("song.nbsx") {
         Ok(data) => data,
         Err(err) => {
@@ -53,13 +61,44 @@ fn main() {
             std::process::exit(1);
         }
     };
+    let header = &song_data.song.header;
 
     /* Instruments and note events don't need a window or an audio device. */
     let bank = InstrumentBank::new(&song_data.extra_sounds);
     let note_blocks = notes::get_note_blocks(&song_data.song, &bank.base_keys());
 
-    let (mut app_state, mut rl, thread) =
-        app_state::AppState::setup_application(config.clone(), &song_data.song, note_blocks);
+    let song_name = String::from_utf8(header.song_name.clone()).unwrap_or_else(|_| "Unknown".into());
+    let song_author =
+        String::from_utf8(header.song_author.clone()).unwrap_or_else(|_| "Unknown".into());
+    let title = format!("{} - {}", song_name, song_author);
+
+    let player = Player::new(
+        title.clone(),
+        header.tempo,
+        header.song_length as usize,
+        note_blocks,
+        notes::generate_instrument_palette(),
+    );
+
+    /* Window and GPU resources */
+    let (mut rl, thread) = raylib::init()
+        .size(config.window_width as i32, config.window_height as i32)
+        .title(&title)
+        .build();
+    rl.set_target_fps(config.target_fps.unwrap_or(60));
+
+    let font = font::load_fonts(config.font_id.clone(), &mut rl, &thread);
+    let mut resources = Resources::new(&mut rl, &thread, font, config.background.clone());
+
+    let window_size = Vec2::new(rl.get_screen_width() as f32, rl.get_screen_height() as f32);
+    let mut app = App::new(
+        Theme::from_theme_config(&config.theme),
+        player,
+        window_size,
+        config.initial_volume.unwrap_or(0.5),
+        rand::random::<f32>() * 1000.0,
+        &resources,
+    );
 
     /* Audio */
     let raylib_audio = audio::needs_raylib_audio(config.audio_backend).then(|| {
@@ -67,10 +106,7 @@ fn main() {
     });
     let mut audio_backend =
         audio::create_backend(config.audio_backend, raylib_audio.as_ref(), &bank);
-    audio_backend.set_master_volume(app_state.volume);
-
-    app_state.window_width = rl.get_screen_width() as f32;
-    app_state.window_height = rl.get_screen_height() as f32;
+    audio_backend.set_master_volume(app.volume);
 
     // NBS_PROFILE_FRAMES=N: profile N frames from the start, print report, exit.
     let bench_frames: Option<u32> = env::var("NBS_PROFILE_FRAMES")
@@ -78,8 +114,10 @@ fn main() {
         .and_then(|v| v.parse().ok());
     if bench_frames.is_some() {
         profiler::toggle();
-        app_state.player.play();
+        app.player.play();
     }
+    // NBS_SCREENSHOT=name.png: save frame 15 (raylib writes it next to the executable).
+    let screenshot = env::var("NBS_SCREENSHOT").ok();
     let mut frame_count = 0u32;
 
     while !rl.window_should_close() {
@@ -90,27 +128,28 @@ fn main() {
                 profiler::dump_folded();
                 break;
             }
-            frame_count += 1;
         }
-        profiler::end_frame();
-        profiler_overlay::handle_input(&rl);
-        {
-            let _p = profiler::scope("update");
-            app_state.toggle_fullscreen(&mut rl);
-            app_state.update_window_dimensions(&mut rl);
-            let delta_time = rl.get_frame_time();
-            app_state.update(&mut rl, delta_time);
+        if let (Some(path), 15) = (&screenshot, frame_count) {
+            rl.take_screenshot(&thread, path);
+            break;
         }
-        app_state.update_audio(audio_backend.as_mut());
+        frame_count += 1;
 
-        let mut d = rl.begin_drawing(&thread);
+        let input = render::read_input(&rl);
+        let dt = rl.get_frame_time();
+        let size = Vec2::new(rl.get_screen_width() as f32, rl.get_screen_height() as f32);
 
-        app_state.draw(&mut d);
-        {
-            let _p = profiler::scope("gui");
-            app_state.update_and_draw_gui(&mut d, audio_backend.as_mut());
+        let events = {
+            let mut d = rl.begin_drawing(&thread);
+            let mut renderer = RaylibRenderer {
+                d: &mut d,
+                res: &mut resources,
+            };
+            app.frame(&input, dt, size, &mut renderer, audio_backend.as_mut())
+        };
+
+        if events.toggle_fullscreen {
+            rl.toggle_fullscreen();
         }
-        let frame_time = d.get_frame_time();
-        profiler_overlay::draw(&mut d, app_state.window_width, frame_time);
     }
 }

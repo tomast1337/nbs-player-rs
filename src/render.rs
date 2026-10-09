@@ -1,118 +1,132 @@
-//! raylib glue: converts core types and draws the sprites the core produces.
+//! raylib frontend: implements the core's `Renderer` and gathers `InputState`.
 
-use nbs_player_core::notes::{self, NoteScene};
-use nbs_player_core::piano;
+use nbs_player_core::config::BackgroundType;
+use nbs_player_core::render::{InputState, Renderer, Sprite};
+use nbs_player_core::theme::Theme;
 use nbs_player_core::types::{Rect, Rgba, TextMeasure, Vec2};
 use raylib::prelude::*;
 
-use crate::app_state::AppState;
+use crate::background::Background;
+use crate::textures::Textures;
 
-pub fn color(c: Rgba) -> Color {
+fn color(c: Rgba) -> Color {
     Color::new(c.r, c.g, c.b, c.a)
 }
 
-pub fn rect(r: Rect) -> Rectangle {
+fn rect(r: Rect) -> Rectangle {
     Rectangle::new(r.x, r.y, r.w, r.h)
 }
 
-pub fn vec2(v: Vec2) -> Vector2 {
+fn vec2(v: Vec2) -> Vector2 {
     Vector2::new(v.x, v.y)
 }
 
-pub fn from_vec2(v: Vector2) -> Vec2 {
-    Vec2::new(v.x, v.y)
+/// GPU resources the renderer draws with (font, textures, background shader).
+pub struct Resources {
+    pub font: Font,
+    pub textures: Textures,
+    pub background: Background,
 }
 
-/// Lets the core measure text with a raylib font.
-pub struct RlText<'a>(pub &'a Font);
+impl Resources {
+    pub fn new(
+        rl: &mut RaylibHandle,
+        thread: &RaylibThread,
+        font: Font,
+        background: BackgroundType,
+    ) -> Self {
+        Self {
+            textures: crate::textures::load_textures(rl, thread),
+            background: Background::new(rl, thread, background),
+            font,
+        }
+    }
 
-impl TextMeasure for RlText<'_> {
-    fn measure_text(&self, text: &str, font_size: f32) -> Vec2 {
-        from_vec2(self.0.measure_text(text, font_size, 0.0))
+    fn texture(&self, sprite: Sprite) -> &Texture2D {
+        let t = &self.textures;
+        match sprite {
+            Sprite::Note => &t.note_texture,
+            Sprite::PianoKey => &t.piano_key_texture,
+            Sprite::Play => &t.play_button,
+            Sprite::Pause => &t.pause_button,
+            Sprite::Reset => &t.reset_button,
+            Sprite::Fullscreen => &t.fullscreen_button,
+            Sprite::Volume0 => &t.vol_000,
+            Sprite::Volume25 => &t.vol_025,
+            Sprite::Volume50 => &t.vol_050,
+            Sprite::Volume75 => &t.vol_075,
+            Sprite::Volume100 => &t.vol_100,
+        }
     }
 }
 
-/// Full-texture source rectangle.
-pub fn tex_src(t: &Texture2D) -> Rectangle {
-    Rectangle::new(0.0, 0.0, t.width as f32, t.height as f32)
+impl TextMeasure for Resources {
+    fn measure_text(&self, text: &str, font_size: f32) -> Vec2 {
+        let v = self.font.measure_text(text, font_size, 0.0);
+        Vec2::new(v.x, v.y)
+    }
 }
 
-/// Draws the falling notes. Returns how many were on screen.
-pub fn draw_notes(d: &mut RaylibDrawHandle<'_>, app: &AppState) -> usize {
-    let scene = NoteScene {
-        window_width: app.window_width,
-        window_height: app.window_height,
-        keys: &app.piano_state.all_keys,
-        key_map: &app.piano_state.key_map,
-        piano_props: &app.piano_state.piano_props,
-        note_blocks: &app.player.note_blocks,
-        current_tick: app.player.current_tick,
-        note_dim: app.note_dim,
-        key_spacing: app.key_spacing,
-        instrument_colors: &app.player.instrument_colors,
-        font_size_2: app.font_size_2,
-        font_size_3: app.font_size_3,
-    };
-    let note_texture = &app.textures.note_texture;
-    let src = tex_src(note_texture);
-    let font = &app.font;
+/// One frame's drawing target: a raylib draw handle plus the shared resources.
+pub struct RaylibRenderer<'a, 'd> {
+    pub d: &'a mut RaylibDrawHandle<'d>,
+    pub res: &'a mut Resources,
+}
 
-    notes::visible_notes(&scene, &RlText(font), |n| {
-        d.draw_texture_pro(
-            note_texture,
-            src,
-            rect(n.rect),
+impl TextMeasure for RaylibRenderer<'_, '_> {
+    fn measure_text(&self, text: &str, font_size: f32) -> Vec2 {
+        self.res.measure_text(text, font_size)
+    }
+}
+
+impl Renderer for RaylibRenderer<'_, '_> {
+    fn draw_background(&mut self, time: f32, resolution: Vec2, theme: &Theme) {
+        self.res.background.shader_time = time;
+        self.res
+            .background
+            .draw(self.d, theme, [resolution.x, resolution.y]);
+    }
+
+    fn draw_rect(&mut self, r: Rect, c: Rgba) {
+        self.d.draw_rectangle_rec(rect(r), color(c));
+    }
+
+    fn draw_rect_outline(&mut self, r: Rect, thickness: f32, c: Rgba) {
+        self.d.draw_rectangle_lines_ex(rect(r), thickness, color(c));
+    }
+
+    fn draw_sprite(&mut self, sprite: Sprite, dst: Rect, tint: Rgba) {
+        let tex = self.res.texture(sprite);
+        let src = Rectangle::new(0.0, 0.0, tex.width as f32, tex.height as f32);
+        self.d
+            .draw_texture_pro(tex, src, rect(dst), Vector2::zero(), 0.0, color(tint));
+    }
+
+    fn draw_text(&mut self, text: &str, pos: Vec2, font_size: f32, c: Rgba) {
+        self.d.draw_text_pro(
+            &self.res.font,
+            text,
+            vec2(pos),
             Vector2::zero(),
             0.0,
-            color(n.color),
-        );
-        d.draw_text_pro(
-            font,
-            n.label,
-            vec2(n.label_pos),
-            Vector2::new(0.5, 0.5),
+            font_size,
             0.0,
-            n.font_size,
-            0.0,
-            Color::WHITE,
+            color(c),
         );
-    })
+    }
 }
 
-pub fn draw_piano_keys(d: &mut RaylibDrawHandle<'_>, app: &AppState) {
-    let key_texture = &app.textures.piano_key_texture;
-    let src = tex_src(key_texture);
-    let font = &app.font;
-
-    d.draw_rectangle_rec(
-        rect(app.piano_state.bounds(app.window_width, app.window_height)),
-        Color::BLACK,
-    );
-    piano::for_each_key_sprite(
-        &app.piano_state,
-        app.window_width,
-        app.window_height,
-        &app.theme,
-        &RlText(font),
-        |k| {
-            d.draw_texture_pro(
-                key_texture,
-                src,
-                rect(k.rect),
-                Vector2::zero(),
-                0.0,
-                color(k.color),
-            );
-            d.draw_text_pro(
-                font,
-                k.label,
-                vec2(k.label_pos),
-                Vector2::zero(),
-                0.0,
-                k.font_size,
-                0.,
-                color(k.text_color),
-            );
-        },
-    );
+/// Snapshot the mouse and the keys the core cares about.
+pub fn read_input(rl: &RaylibHandle) -> InputState {
+    let m = rl.get_mouse_position();
+    let left = MouseButton::MOUSE_BUTTON_LEFT;
+    InputState {
+        mouse_pos: Vec2::new(m.x, m.y),
+        mouse_down: rl.is_mouse_button_down(left),
+        mouse_pressed: rl.is_mouse_button_pressed(left),
+        mouse_released: rl.is_mouse_button_released(left),
+        space_pressed: rl.is_key_pressed(KeyboardKey::KEY_SPACE),
+        toggle_profiler: rl.is_key_pressed(KeyboardKey::KEY_F3),
+        dump_profile: rl.is_key_pressed(KeyboardKey::KEY_F4),
+    }
 }
