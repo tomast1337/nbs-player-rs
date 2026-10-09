@@ -1,3 +1,8 @@
+//! [`AudioBackend`](nbs_player_core::audio::AudioBackend) that pulls the core software
+//! mixer from a cpal output stream. Works on native targets and on
+//! `wasm32-unknown-unknown` (with cpal's `wasm-bindgen` feature); not on emscripten.
+#![cfg(not(target_os = "emscripten"))]
+
 use cpal::traits::{DeviceTrait, HostTrait, StreamTrait};
 use cpal::{FromSample, SampleFormat, SizedSample, Stream};
 use nbs_player_core::audio::{AudioBackend, Instrument, SharedMixer};

@@ -13,16 +13,7 @@ fn load_background_shader(
             "#version 330 core\n"
         }
     };
-    let fs_code = match background {
-        BackgroundType::Plain => include_str!("../assets/shaders/plain_background.frag"),
-        BackgroundType::Water => include_str!("../assets/shaders/water_background.frag"),
-        BackgroundType::WaterFall => include_str!("../assets/shaders/water_fall_background.frag"),
-        BackgroundType::Plasma => include_str!("../assets/shaders/plasma_background.frag"),
-        BackgroundType::Fire => include_str!("../assets/shaders/fire_background.frag"),
-        BackgroundType::Grass => include_str!("../assets/shaders/grass_background.frag"),
-        BackgroundType::Sand => include_str!("../assets/shaders/sand_background.frag"),
-        BackgroundType::Voronoise => include_str!("../assets/shaders/voronoise_background.frag"),
-    };
+    let fs_code = background.fragment_source();
     let fs_code = format!("{}{}", shader_header, fs_code);
     let background_shader = rl.load_shader_from_memory(thread, None, Some(&fs_code));
     return background_shader;
@@ -66,16 +57,7 @@ impl Background {
         let black_text_key_color_loc =
             background_shader.get_shader_location("black_text_key_color");
 
-        let speed = match background {
-            BackgroundType::Plain => 0.0,
-            BackgroundType::Water => 2.5,
-            BackgroundType::WaterFall => 0.5,
-            BackgroundType::Plasma => 0.012,
-            BackgroundType::Fire => 1.0,
-            BackgroundType::Grass => 0.4,
-            BackgroundType::Sand => 0.2,
-            BackgroundType::Voronoise => 0.1,
-        };
+        let speed = background.speed();
 
         Self {
             shader_time: rand::random::<f32>() * 1000.0,

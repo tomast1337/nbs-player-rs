@@ -1,0 +1,14 @@
+[package]
+name = "nbs-player-cpal"
+version = "0.1.0"
+edition = "2024"
+description = "cpal output for the nbs-player-core software mixer"
+license = "AGPL-3.0 license"
+
+[dependencies]
+nbs-player-core = { path = "../nbs-player-core" }
+log = "0.4.26"
+
+# cpal 0.18 dropped its emscripten host; this crate is empty there.
+[target.'cfg(not(target_os = "emscripten"))'.dependencies]
+cpal = "0.18"

@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>NBS Player</title>
+    <style>
+        html, body { margin: 0; height: 100%; background: #101014; overflow: hidden; }
+        canvas { display: block; width: 100%; height: 100%; }
+    </style>
+</head>
+<body>
+    <canvas id="glcanvas" tabindex="1"></canvas>
+    <script src="mq_js_bundle.js"></script>
+    <script src="nbs_audio.js"></script>
+    <script>load("nbs-player-macroquad.wasm");</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+[package]
+name = "nbs-player-macroquad"
+version = "0.1.0"
+edition = "2024"
+description = "macroquad frontend for the NBS player"
+license = "AGPL-3.0 license"
+
+[dependencies]
+nbs-player-core = { path = "../nbs-player-core" }
+macroquad = "0.4"
+serde_json = "1"
+log = "0.4.26"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+nbs-player-cpal = { path = "../nbs-player-cpal" }

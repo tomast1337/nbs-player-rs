@@ -22,6 +22,55 @@ pub enum FontID {
     Setbackt,   // Retro like
 }
 
+impl FontID {
+    /// The bundled TrueType font data.
+    pub fn ttf_bytes(&self) -> &'static [u8] {
+        match self {
+            FontID::Monocraft => include_bytes!("../../../assets/fonts/Monocraft.ttf"),
+            FontID::JupiterC => include_bytes!("../../../assets/fonts/jupiterc.ttf"),
+            FontID::PixAntiqua => include_bytes!("../../../assets/fonts/PixAntiqua.ttf"),
+            FontID::PixelPlay => include_bytes!("../../../assets/fonts/pixelplay.ttf"),
+            FontID::Romulus => include_bytes!("../../../assets/fonts/Romulus.ttf"),
+            FontID::Setbackt => include_bytes!("../../../assets/fonts/setbackt.ttf"),
+        }
+    }
+}
+
+impl BackgroundType {
+    /// Animation speed multiplier fed to the shader's `speed` uniform.
+    pub fn speed(&self) -> f32 {
+        match self {
+            BackgroundType::Plain => 0.0,
+            BackgroundType::Water => 2.5,
+            BackgroundType::WaterFall => 0.5,
+            BackgroundType::Plasma => 0.012,
+            BackgroundType::Fire => 1.0,
+            BackgroundType::Grass => 0.4,
+            BackgroundType::Sand => 0.2,
+            BackgroundType::Voronoise => 0.1,
+        }
+    }
+
+    /// GLSL fragment shader body (GLSL 1.00 style, no header). It expects the uniforms
+    /// `iResolution`, `iTime`, `speed` and the seven theme colors (`background_color`, ...).
+    pub fn fragment_source(&self) -> &'static str {
+        match self {
+            BackgroundType::Plain => include_str!("../../../assets/shaders/plain_background.frag"),
+            BackgroundType::Water => include_str!("../../../assets/shaders/water_background.frag"),
+            BackgroundType::WaterFall => {
+                include_str!("../../../assets/shaders/water_fall_background.frag")
+            }
+            BackgroundType::Plasma => include_str!("../../../assets/shaders/plasma_background.frag"),
+            BackgroundType::Fire => include_str!("../../../assets/shaders/fire_background.frag"),
+            BackgroundType::Grass => include_str!("../../../assets/shaders/grass_background.frag"),
+            BackgroundType::Sand => include_str!("../../../assets/shaders/sand_background.frag"),
+            BackgroundType::Voronoise => {
+                include_str!("../../../assets/shaders/voronoise_background.frag")
+            }
+        }
+    }
+}
+
 /// Which audio implementation plays the notes.
 #[derive(Debug, Deserialize, Serialize, Clone, Copy, PartialEq, Eq, Default)]
 pub enum AudioBackendKind {
@@ -54,4 +103,39 @@ pub struct AppConfig {
     pub target_fps: Option<u32>,
     #[serde(default)]
     pub audio_backend: AudioBackendKind,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_background_has_a_shader_with_the_expected_uniforms() {
+        for kind in [
+            BackgroundType::Plain,
+            BackgroundType::Water,
+            BackgroundType::WaterFall,
+            BackgroundType::Plasma,
+            BackgroundType::Fire,
+            BackgroundType::Grass,
+            BackgroundType::Sand,
+            BackgroundType::Voronoise,
+        ] {
+            let src = kind.fragment_source();
+            assert!(src.contains("void main"), "{kind:?}");
+            assert!(src.contains("background_color"), "{kind:?}");
+        }
+    }
+
+    #[test]
+    fn audio_backend_defaults_to_raylib_when_omitted() {
+        let cfg: AppConfig = serde_json::from_str(
+            r##"{"font_id":"PixelPlay","background":"Plain","window_width":800,"window_height":600,
+            "theme":{"background_color":"#000000","accent_color":"#000000","text_color":"#000000",
+            "white_key_color":"#000000","black_key_color":"#000000","white_text_key_color":"#000000",
+            "black_text_key_color":"#000000"}}"##,
+        )
+        .unwrap();
+        assert_eq!(cfg.audio_backend, AudioBackendKind::Raylib);
+    }
 }
