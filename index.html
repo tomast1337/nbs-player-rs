@@ -218,6 +218,14 @@
                 width: 100%;
             }
         }
+        select {
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid #555;
+            background: #2a2a40;
+            color: #fff;
+            font-size: 1rem;
+        }
     </style>
 </head>
 
@@ -227,6 +235,7 @@
         <div class="song-info" id="songInfo">Loading...</div>
         <canvas tabindex="1" id="canvas"></canvas>
         <div class="controls">
+            <select id="rendererSelect" title="Frontend and audio backend"></select>
             <button id="prevBtn">Previous</button>
             <button id="nextBtn">Next</button>
         </div>
