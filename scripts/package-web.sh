@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Assemble the static site (root page + all three wasm builds + songs) into dist/,
+# Assemble the static site (root page + all four wasm builds + songs) into dist/,
 # keeping the same relative paths the page uses when served from the repo root.
 # Build the wasm first: see README and the .github/workflows/pages.yml workflow.
 set -euo pipefail
@@ -17,6 +17,8 @@ files=(
     crates/nbs-player-macroquad/web/nbs_audio.js
     crates/nbs-player-wgpu/web/pkg/nbs_player_wgpu.js
     crates/nbs-player-wgpu/web/pkg/nbs_player_wgpu_bg.wasm
+    crates/nbs-player-canvas/web/pkg/nbs_player_canvas.js
+    crates/nbs-player-canvas/web/pkg/nbs_player_canvas_bg.wasm
 )
 for f in "${files[@]}"; do
     [ -f "$f" ] || { echo "missing $f (build it first)" >&2; exit 1; }

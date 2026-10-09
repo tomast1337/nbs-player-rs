@@ -1,0 +1,41 @@
+[package]
+name = "nbs-player-canvas"
+version = "0.1.0"
+edition = "2024"
+description = "Canvas 2D frontend for the NBS player (web only, no GPU API needed)"
+license = "AGPL-3.0 license"
+
+[lib]
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+nbs-player-core = { path = "../nbs-player-core" }
+nbs-player-cpal = { path = "../nbs-player-cpal" }
+serde_json = "1"
+log = "0.4.26"
+wasm-bindgen = "0.2.129"
+wasm-bindgen-futures = "0.4"
+js-sys = "0.3"
+console_error_panic_hook = "0.1"
+console_log = "1"
+web-sys = { version = "0.3", features = [
+    "Window",
+    "Document",
+    "Element",
+    "HtmlElement",
+    "HtmlCanvasElement",
+    "CanvasRenderingContext2d",
+    "ImageData",
+    "ImageBitmap",
+    "Blob",
+    "BlobPropertyBag",
+    "TextMetrics",
+    "Performance",
+    "Response",
+    "FontFace",
+    "FontFaceSet",
+    "Event",
+    "EventTarget",
+    "MouseEvent",
+    "KeyboardEvent",
+] }

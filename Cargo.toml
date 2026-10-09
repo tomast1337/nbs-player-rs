@@ -1,5 +1,5 @@
 [workspace]
-members = ["crates/nbs-player-core", "crates/nbs-player-cpal", "crates/nbs-player-macroquad", "crates/nbs-player-wgpu"]
+members = ["crates/nbs-player-core", "crates/nbs-player-cpal", "crates/nbs-player-macroquad", "crates/nbs-player-wgpu", "crates/nbs-player-canvas"]
 
 [package]
 name = "nbs-player-rs"

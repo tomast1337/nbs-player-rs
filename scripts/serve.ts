@@ -24,6 +24,7 @@ const expected = [
   "target/wasm32-unknown-emscripten/release/nbs-player-rs.js",
   "target/wasm32-unknown-unknown/release/nbs-player-macroquad.wasm",
   "crates/nbs-player-wgpu/web/pkg/nbs_player_wgpu.js",
+  "crates/nbs-player-canvas/web/pkg/nbs_player_canvas.js",
 ];
 for (const f of expected) {
   if (!existsSync(join(root, f))) {
@@ -61,3 +62,4 @@ console.log(`serving ${root}`);
 console.log(`  raylib:    http://localhost:${server.port}/?renderer=raylib`);
 console.log(`  macroquad: http://localhost:${server.port}/?renderer=macroquad`);
 console.log(`  wgpu:      http://localhost:${server.port}/?renderer=wgpu`);
+console.log(`  canvas:    http://localhost:${server.port}/?renderer=canvas`);

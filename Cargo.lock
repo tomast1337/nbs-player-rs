@@ -1768,6 +1768,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "nbs-player-canvas"
+version = "0.1.0"
+dependencies = [
+ "console_error_panic_hook",
+ "console_log",
+ "js-sys",
+ "log",
+ "nbs-player-core",
+ "nbs-player-cpal",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+]
+
+[[package]]
 name = "nbs-player-core"
 version = "0.1.0"
 dependencies = [
