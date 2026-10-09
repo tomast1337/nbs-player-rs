@@ -398,6 +398,11 @@ impl ApplicationHandler for Handler {
 }
 
 fn handler(pending: Pending) -> Handler {
+    // std's clock panics on wasm32-unknown-unknown; web-time works on both.
+    nbs_player_core::profiler::set_clock(|| {
+        static START: std::sync::OnceLock<Instant> = std::sync::OnceLock::new();
+        START.get_or_init(Instant::now).elapsed().as_nanos() as u64
+    });
     Handler {
         pending: Some(pending),
         slot: Rc::new(RefCell::new(None)),

@@ -122,6 +122,8 @@ fn create_audio() -> Box<dyn AudioBackend> {
 
 #[macroquad::main(window_conf)]
 async fn main() {
+    // std's clock panics on wasm32-unknown-unknown; miniquad has its own.
+    nbs_player_core::profiler::set_clock(|| (miniquad::date::now() * 1e9) as u64);
     let config = parse_config(load_config_text().await.as_deref());
 
     let bytes = load_song_bytes().await;
