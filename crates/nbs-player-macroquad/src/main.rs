@@ -87,6 +87,8 @@ mod web_audio {
     use nbs_player_core::audio::{AudioBackend, SharedMixer};
     use std::sync::{Mutex, OnceLock};
 
+    // Newer rustc no longer lets wasm-ld leave plain externs undefined; name the import module.
+    #[link(wasm_import_module = "env")]
     unsafe extern "C" {
         /// Creates the AudioContext and returns its sample rate.
         fn nbs_audio_init() -> u32;
