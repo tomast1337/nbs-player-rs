@@ -31,13 +31,13 @@ After installing the SDK, you need to activate it. You can do this by running th
 On Linux or MacOS:
 
 ```bash
-EMCC_CFLAGS="-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sASYNCIFY" cargo build --release --target wasm32-unknown-emscripten
+EMCC_CFLAGS="-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sJSPI" cargo build --release --target wasm32-unknown-emscripten
 ```
 
 On Windows:
 
 ```bash
-set EMCC_CFLAGS=-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sASYNCIFY
+set EMCC_CFLAGS=-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sJSPI
 cargo build --release --target wasm32-unknown-emscripten
 ```
 
@@ -56,6 +56,8 @@ python3 -m http.server
 ```
 
 Then, open your browser the link given by the server.
+
+The build uses JSPI rather than Asyncify: rustc links with `-fwasm-exceptions`, which binaryen's Asyncify pass cannot instrument (it aborts in `Asyncify.cpp`). JSPI needs a browser that ships it (Chrome/Edge 137+; check current Firefox and Safari support).
 
 ## Compile and Running for Native
 

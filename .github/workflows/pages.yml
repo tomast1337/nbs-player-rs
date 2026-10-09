@@ -1,0 +1,64 @@
+name: Deploy web player to GitHub Pages
+
+on:
+  push:
+    branches: [develop]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-unknown-emscripten,wasm32-unknown-unknown
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: mymindstorm/setup-emsdk@v14
+        with:
+          version: 4.0.5
+
+      # raylib (emscripten); JSPI because Asyncify cannot handle -fwasm-exceptions
+      - name: Build raylib frontend
+        run: cargo build --release --target wasm32-unknown-emscripten
+        env:
+          EMCC_CFLAGS: -sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sJSPI
+
+      - name: Build macroquad frontend
+        run: cargo build --release --target wasm32-unknown-unknown -p nbs-player-macroquad
+
+      # the wasm-bindgen CLI must match the crate version in Cargo.lock
+      - name: Build wgpu frontend
+        run: |
+          version=$(awk '/^name = "wasm-bindgen"$/{getline; gsub(/[version = "]/,""); print; exit}' Cargo.lock)
+          cargo install wasm-bindgen-cli --version "$version" --root target/tools --locked
+          crates/nbs-player-wgpu/build-web.sh
+
+      - name: Package site
+        run: scripts/package-web.sh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
