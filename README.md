@@ -86,8 +86,10 @@ You can change the arguments as you like.
 
 Cargo workspace; the player is split so rendering and audio can be swapped independently.
 
-- `crates/nbs-player-core`: everything that is not a window, a GPU or an audio device. Song loading, playback state (`Player`), piano/note/controls layout (produces sprites as plain `Rect`/`Rgba` values), the profiler, and the audio side: `AudioBackend` trait, Ogg decoding, and a software `Mixer`. Compiles for wasm and has unit tests (`cargo test -p nbs-player-core`).
-- `src/` (the app): raylib window, GUI and shaders, plus audio backends implementing `AudioBackend` (`src/audio/`).
+- `crates/nbs-player-core`: everything that is not a window, a GPU or an audio device. It holds the whole player (`app::App`): song loading, playback (`Player`), piano/note/controls layout, an immediate-mode UI (`ui`), the profiler and its overlay, and the audio side (`AudioBackend` trait, Ogg decoding, a software `Mixer`). A frame is `app.frame(input, dt, size, &mut renderer, &mut audio)`. Compiles for wasm and is unit-tested headless (`cargo test -p nbs-player-core`).
+- `src/` (the raylib frontend): implements the core's `Renderer` (`src/render.rs`, plus fonts, textures and GLSL shaders), reads `InputState` from raylib, and provides audio backends (`src/audio/`).
+
+To add another frontend (wgpu, macroquad, canvas...), implement `render::Renderer` (7 draw calls and text measuring), fill `render::InputState` each frame, and pick an `AudioBackend`.
 
 ### Audio backends
 
@@ -100,7 +102,7 @@ Render a song to a WAV without any device: `cargo run --release -p nbs-player-co
 
 ## Profiler
 
-Built-in scoped stack profiler (`crates/nbs-player-core/src/profiler.rs`, overlay in `src/profiler_overlay.rs`). In-app: **F3** toggles the overlay (avg / peak ms, call count per nested scope), **F4** writes `profile.folded`. Render a flamegraph with `cargo install inferno` then `inferno-flamegraph < profile.folded > flame.svg`. Add scopes with `let _p = profiler::scope("name");`. Headless: `NBS_PROFILE_FRAMES=900 cargo run --release -- '<json>'` profiles that many frames, logs the report and exits.
+Built-in scoped stack profiler (`crates/nbs-player-core/src/profiler.rs`, overlay in `debug_overlay.rs`). In-app: **F3** toggles the overlay (avg / peak ms, call count per nested scope), **F4** writes `profile.folded`. Render a flamegraph with `cargo install inferno` then `inferno-flamegraph < profile.folded > flame.svg`. Add scopes with `let _p = profiler::scope("name");`. Headless: `NBS_PROFILE_FRAMES=900 cargo run --release -- '<json>'` profiles that many frames, logs the report and exits.
 
 # License
 

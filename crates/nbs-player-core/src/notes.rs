@@ -205,9 +205,10 @@ pub fn visible_notes<'a>(
                 color,
                 label,
                 font_size,
+                // -0.5 matches the sub-pixel origin the label was historically drawn with.
                 label_pos: Vec2::new(
-                    x_pos + half_window_width - text_dim.x / 2.0,
-                    y_pos + half_note_dim - text_dim.y / 2.0,
+                    x_pos + half_window_width - text_dim.x / 2.0 - 0.5,
+                    y_pos + half_note_dim - text_dim.y / 2.0 - 0.5,
                 ),
             });
             emitted += 1;

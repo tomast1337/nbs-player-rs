@@ -4,14 +4,18 @@
 //! time, then draw the sprites it produces and play the notes it releases through an
 //! [`audio::AudioBackend`].
 
+pub mod app;
 pub mod audio;
 pub mod config;
 pub mod controls;
+pub mod debug_overlay;
 pub mod notes;
 pub mod piano;
 pub mod player;
 pub mod profiler;
+pub mod render;
 pub mod song;
 pub mod theme;
 pub mod types;
+pub mod ui;
 pub mod utils;
