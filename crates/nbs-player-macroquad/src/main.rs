@@ -7,7 +7,7 @@ use nbs_player_core::app::App;
 use nbs_player_core::audio::{AudioBackend, InstrumentBank};
 #[cfg(not(target_arch = "wasm32"))]
 use nbs_player_core::audio::NullBackend;
-use nbs_player_core::config::{AppConfig, BackgroundType, FontID, ThemeConfig};
+use nbs_player_core::config::AppConfig;
 use nbs_player_core::player::Player;
 use nbs_player_core::theme::Theme;
 use nbs_player_core::types::Vec2 as CoreVec2;
@@ -16,27 +16,6 @@ use nbs_player_core::{notes, song};
 mod render;
 
 use render::MacroquadRenderer;
-
-fn default_config() -> AppConfig {
-    AppConfig {
-        font_id: FontID::PixelPlay,
-        background: BackgroundType::Plain,
-        window_width: 1280,
-        window_height: 720,
-        theme: ThemeConfig {
-            background_color: "#66BFFF".into(),
-            accent_color: "#8A2BE2".into(),
-            text_color: "#000000".into(),
-            white_key_color: "#FFFFFF".into(),
-            black_key_color: "#333333".into(),
-            white_text_key_color: "#000000".into(),
-            black_text_key_color: "#FFFFFF".into(),
-        },
-        initial_volume: None,
-        target_fps: None,
-        audio_backend: Default::default(),
-    }
-}
 
 #[cfg(not(target_arch = "wasm32"))]
 fn config_text() -> Option<String> {
@@ -67,7 +46,7 @@ fn parse_config(text: Option<&str>) -> AppConfig {
             macroquad::miniquad::error!("Error parsing JSON config: {}", e);
             std::process::exit(1);
         }
-        None => default_config(),
+        None => AppConfig::demo(),
     }
 }
 
