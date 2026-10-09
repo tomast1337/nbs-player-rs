@@ -21,6 +21,8 @@ A web version is available at <https://tomast1337.github.io/nbs-player-rs>, it a
 
 # Run development environment
 
+Serve the web page (both frontends) with `bun scripts/serve.ts [port]`; build the wasm first (below, plus `crates/nbs-player-macroquad/build-web.sh` for macroquad).
+
 ## Compile and Running for WebAssembly
 
 you need to have the Emscripten SDK installed. You can find instructions on how to install it [here](https://emscripten.org/docs/getting_started/downloads.html).
