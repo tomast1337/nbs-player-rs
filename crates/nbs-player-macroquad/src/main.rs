@@ -64,7 +64,7 @@ fn parse_config(text: Option<&str>) -> AppConfig {
     match text.map(serde_json::from_str) {
         Some(Ok(cfg)) => cfg,
         Some(Err(e)) => {
-            eprintln!("Error parsing JSON config: {e}");
+            macroquad::miniquad::error!("Error parsing JSON config: {}", e);
             std::process::exit(1);
         }
         None => default_config(),
@@ -94,7 +94,7 @@ fn create_audio() -> Box<dyn AudioBackend> {
     match nbs_player_cpal::CpalBackend::new() {
         Ok(b) => Box::new(b),
         Err(e) => {
-            eprintln!("audio unavailable ({e}); running silent");
+            macroquad::miniquad::error!("audio unavailable ({}); running silent", e);
             Box::new(NullBackend)
         }
     }
@@ -149,7 +149,7 @@ async fn main() {
     let song_data = match song::load_nbs_file(bytes.as_deref()) {
         Ok(s) => s,
         Err(e) => {
-            eprintln!("Error loading song: {e}");
+            macroquad::miniquad::error!("Error loading song: {}", e);
             std::process::exit(1);
         }
     };
@@ -171,7 +171,7 @@ async fn main() {
     {
         Ok(r) => r,
         Err(e) => {
-            eprintln!("Error creating renderer: {e}");
+            macroquad::miniquad::error!("Error creating renderer: {}", e);
             std::process::exit(1);
         }
     };

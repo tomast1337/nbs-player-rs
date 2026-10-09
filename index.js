@@ -1,9 +1,28 @@
-// ADD THE <script src="./target/wasm32-unknown-emscripten/release/nbs-player-rs.js"> TAG TO THE PAGE
-const scriptTag = document.createElement("script");
-scriptTag.src = "./target/wasm32-unknown-emscripten/release/nbs-player-rs.js";
+// Which frontend runs in the page: "raylib" (emscripten build, raylib audio) or
+// "macroquad" (wasm32-unknown-unknown build, core mixer through Web Audio).
+// Chosen with ?renderer=macroquad and remembered in localStorage.
+const RENDERERS = {
+  raylib: { label: "Raylib (emscripten) + raylib audio" },
+  macroquad: { label: "Macroquad (wasm) + core mixer / Web Audio" },
+};
+let renderer = new URLSearchParams(location.search).get("renderer");
+if (!(renderer in RENDERERS)) {
+  renderer = localStorage.getItem("renderer");
+}
+if (!(renderer in RENDERERS)) {
+  renderer = "raylib";
+}
+localStorage.setItem("renderer", renderer);
 
-// Append the script tag to the body
-document.body.appendChild(scriptTag);
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    const tag = document.createElement("script");
+    tag.src = src;
+    tag.onload = resolve;
+    tag.onerror = () => reject(new Error(`failed to load ${src}`));
+    document.body.appendChild(tag);
+  });
+}
 
 const themes = {
   BLOOD_MOON: {
@@ -269,8 +288,8 @@ function loadSong(index) {
   const selectedSong = songs[currentSongIndex];
 
   // Update the arguments with the song's theme and font
-  arguments.theme = selectedSong.theme;
-  arguments.font_id = selectedSong.fontId;
+  appArgs.theme = selectedSong.theme;
+  appArgs.font_id = selectedSong.fontId;
 
   // Reload the page to play the new song
   location.reload();
@@ -306,7 +325,7 @@ const window_width = 1280;
 const window_height = 720;
 
 // Initialize arguments with the current song's theme and font
-const arguments = {
+const appArgs = {
   font_id: songs[currentSongIndex].fontId,
   background: songs[currentSongIndex].background,
   window_width: fullscreen_window_width,
@@ -314,32 +333,77 @@ const arguments = {
   theme: songs[currentSongIndex].theme,
 };
 
-const canvas = document.getElementById("canvas");
+const playerCanvas = document.getElementById("canvas");
 // if spacebar is pressed do not roll the screen
-canvas.addEventListener("keydown", function (event) {
+playerCanvas.addEventListener("keydown", function (event) {
   if (event.code === "Space") {
     event.preventDefault();
   }
 });
 
-var Module = {
-  canvas: canvas,
-  arguments: [JSON.stringify(arguments)],
-  noInitialRun: true,
-  noExitRuntime: false, // Allow the runtime to exit
-  preInit: async function () {
-    updateUI();
+const songUrl = () => `./test-assets/${songs[currentSongIndex].filename}`;
 
-    // wait 2 seconds before starting
-    await new Promise((resolve) => setTimeout(resolve, 200));
-    const song_url = `./test-assets/${songs[currentSongIndex].filename}`;
-    const response = await fetch(song_url);
-    const arrayBuffer = await response.arrayBuffer();
-    const byteArray = new Uint8Array(arrayBuffer);
-    FS.writeFile("/song.nbsx", byteArray);
-    callMain(Module.arguments);
-  },
-};
+function startRaylib() {
+  // Module must be global: the emscripten glue reads it.
+  window.Module = {
+    canvas: playerCanvas,
+    arguments: [JSON.stringify(appArgs)],
+    noInitialRun: true,
+    noExitRuntime: false, // Allow the runtime to exit
+    preInit: async function () {
+      updateUI();
+
+      await new Promise((resolve) => setTimeout(resolve, 200));
+      const response = await fetch(songUrl());
+      const byteArray = new Uint8Array(await response.arrayBuffer());
+      FS.writeFile("/song.nbsx", byteArray);
+      callMain(Module.arguments);
+    },
+  };
+  loadScript("./target/wasm32-unknown-emscripten/release/nbs-player-rs.js");
+}
+
+// The macroquad build fetches `song.nbsx` and `config.json` relative to the page (through
+// XMLHttpRequest). Point those at the selected song and theme.
+function startMacroquad() {
+  updateUI();
+  const configUrl = URL.createObjectURL(
+    new Blob([JSON.stringify(appArgs)], { type: "application/json" }),
+  );
+  const open = XMLHttpRequest.prototype.open;
+  XMLHttpRequest.prototype.open = function (method, url, ...rest) {
+    if (url === "song.nbsx") url = songUrl();
+    else if (url === "config.json") url = configUrl;
+    return open.call(this, method, url, ...rest);
+  };
+
+  playerCanvas.id = "glcanvas"; // macroquad's loader looks for this id
+  const web = "./crates/nbs-player-macroquad/web";
+  loadScript(`${web}/mq_js_bundle.js`)
+    .then(() => loadScript(`${web}/nbs_audio.js`))
+    .then(() =>
+      load("./target/wasm32-unknown-unknown/release/nbs-player-macroquad.wasm"),
+    )
+    .catch((e) => {
+      songInfoElement.textContent = `Failed to start macroquad build: ${e.message}`;
+    });
+}
+
+// Renderer picker (reloads the page, like changing song does)
+const rendererSelect = document.getElementById("rendererSelect");
+for (const [key, { label }] of Object.entries(RENDERERS)) {
+  rendererSelect.add(new Option(label, key, false, key === renderer));
+}
+rendererSelect.addEventListener("change", () => {
+  localStorage.setItem("renderer", rendererSelect.value);
+  location.search = `?renderer=${rendererSelect.value}`;
+});
+
+if (renderer === "macroquad") {
+  startMacroquad();
+} else {
+  startRaylib();
+}
 
 // Add keyboard shortcuts
 document.addEventListener("keydown", (e) => {
