@@ -31,3 +31,12 @@ rand = "0.9.0"
 # cpal 0.18 has no emscripten host; the raylib audio backend is used there.
 [target.'cfg(not(target_os = "emscripten"))'.dependencies]
 nbs-player-cpal = { path = "crates/nbs-player-cpal" }
+
+# Small, fast-to-download wasm for the web builds (`--profile web`).
+[profile.web]
+inherits = "release"
+opt-level = "z"
+lto = "fat"
+codegen-units = 1
+strip = true
+panic = "abort"
