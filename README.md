@@ -41,6 +41,8 @@ set EMCC_CFLAGS=-sUSE_GLFW=3 -sGL_ENABLE_GET_PROC_ADDRESS -sJSPI
 cargo build --release --target wasm32-unknown-emscripten
 ```
 
+`scripts/build-raylib-web.sh` runs the Linux/macOS command above. The built files are no longer committed (CI builds and deploys them), so the page's raylib option 404s until you build once locally.
+
 After building the project, you can run the following command to start a local server and serve the files:
 
 With node.js:
