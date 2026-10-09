@@ -8,8 +8,15 @@
 //! Call `end_frame()` once per frame, show `rows()` however the frontend likes, and use
 //! `dump_folded()` to write `profile.folded` (feed to `inferno-flamegraph`).
 //! While disabled a scope costs one thread-local bool read.
+//!
+//! Time comes from a clock function returning nanoseconds. Native targets default to
+//! `std::time::Instant`; `wasm32-unknown-unknown` has no std clock (it panics), so a web
+//! frontend must call [`set_clock`] with its own (`performance.now`, `miniquad::date::now`).
 
-use std::{cell::RefCell, collections::HashMap, time::Instant};
+use std::{
+    cell::{Cell, RefCell},
+    collections::HashMap,
+};
 
 const EMA_ALPHA: f32 = 0.1;
 const PEAK_DECAY: f32 = 0.98;
@@ -30,9 +37,26 @@ struct Stat {
     self_ns_total: u64,
 }
 
+/// Monotonic nanoseconds from an arbitrary origin.
+pub type Clock = fn() -> u64;
+
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+fn default_clock() -> u64 {
+    use std::sync::OnceLock;
+    use std::time::Instant;
+    static START: OnceLock<Instant> = OnceLock::new();
+    START.get_or_init(Instant::now).elapsed().as_nanos() as u64
+}
+
+// No std clock here; scopes read as zero until the frontend installs one.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+fn default_clock() -> u64 {
+    0
+}
+
 struct Open {
     stat: usize,
-    start: Instant,
+    start: u64,
     child_ns: u64,
 }
 
@@ -46,6 +70,16 @@ struct Profiler {
 
 thread_local! {
     static PROFILER: RefCell<Profiler> = RefCell::new(Profiler::default());
+    static CLOCK: Cell<Clock> = const { Cell::new(default_clock) };
+}
+
+/// Replace the time source (needed on `wasm32-unknown-unknown`).
+pub fn set_clock(clock: Clock) {
+    CLOCK.with(|c| c.set(clock));
+}
+
+fn now_ns() -> u64 {
+    CLOCK.with(|c| c.get())()
 }
 
 /// Drop guard returned by [`scope`]; records elapsed time when dropped.
@@ -82,7 +116,7 @@ pub fn scope(name: &'static str) -> Scope {
         };
         p.stack.push(Open {
             stat,
-            start: Instant::now(),
+            start: now_ns(),
             child_ns: 0,
         });
         true
@@ -99,7 +133,7 @@ impl Drop for Scope {
             let mut p = p.borrow_mut();
             // Scope may have been opened before profiling was toggled off.
             let Some(open) = p.stack.pop() else { return };
-            let dur = open.start.elapsed().as_nanos() as u64;
+            let dur = now_ns().saturating_sub(open.start);
             if let Some(parent) = p.stack.last_mut() {
                 parent.child_ns += dur;
             }
@@ -189,10 +223,21 @@ pub fn dump_folded() {
         }
         lines
     });
+    write_folded(&out);
+}
+
+#[cfg(not(all(target_arch = "wasm32", target_os = "unknown")))]
+fn write_folded(out: &str) {
     match std::fs::write(FOLDED_PATH, out) {
         Ok(_) => log::info!("wrote {}", FOLDED_PATH),
         Err(err) => log::error!("failed to write {}: {}", FOLDED_PATH, err),
     }
+}
+
+// No filesystem in the browser: print the folded stacks to the console instead.
+#[cfg(all(target_arch = "wasm32", target_os = "unknown"))]
+fn write_folded(out: &str) {
+    log::info!("{FOLDED_PATH}:\n{out}");
 }
 
 /// One line of the call tree, in pre-order (children directly under their parent).
@@ -230,4 +275,36 @@ pub fn rows() -> Vec<Row> {
         walk(&p.stats, None, &mut out);
         out
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    static NOW: AtomicU64 = AtomicU64::new(0);
+    fn fake() -> u64 {
+        NOW.load(Ordering::Relaxed)
+    }
+
+    #[test]
+    fn custom_clock_drives_scopes() {
+        set_clock(fake);
+        toggle();
+        {
+            let _outer = scope("outer");
+            NOW.store(2_000_000, Ordering::Relaxed);
+            {
+                let _inner = scope("inner");
+                NOW.store(5_000_000, Ordering::Relaxed);
+            }
+            NOW.store(6_000_000, Ordering::Relaxed);
+        }
+        end_frame();
+        let rows = rows();
+        toggle();
+        assert_eq!(rows.len(), 2);
+        assert_eq!((rows[0].name, rows[0].avg_ms), ("outer", 6.0));
+        assert_eq!((rows[1].name, rows[1].avg_ms, rows[1].depth), ("inner", 3.0, 1));
+    }
 }
